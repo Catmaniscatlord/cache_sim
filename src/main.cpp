@@ -13,3 +13,9 @@
 * due: 3/7/2024
 *
 **/
+#include "cache_sim.hpp"
+
+int main(int argc, char** argv)
+{
+	CacheSim simulator;
+}

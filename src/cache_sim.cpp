@@ -19,12 +19,6 @@
 
 void CacheSim::RunSimulation()
 {
-	CacheWrapper cache_wrapper;
-	if (cache_conf_.miss_penalty)
-		cache_wrapper.set_cache(Cache<true>{cache_conf_});
-	else
-		cache_wrapper.set_cache(Cache<false>{cache_conf_});
-
 	// memory access count
 	const auto tc = stack_trace_.size();
 
@@ -36,7 +30,7 @@ void CacheSim::RunSimulation()
 
 	for (auto &memory_access : stack_trace_)
 	{
-		if (!cache_wrapper.AccessMemory(memory_access.address, memory_access.is_read))
+		if (!cache_wrapper_.AccessMemory(memory_access.address, memory_access.is_read))
 		{
 			if (memory_access.is_read)
 			{
@@ -70,6 +64,11 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	if (cache_[index].map.find(block_id) == cache_[index].map.end())
 	{
 		miss = true;
+		// if we have a miss a write with a no-write allocate cache 
+		// then we reuturn here without adding the block to the cache
+		if (!is_read && !is_write_allocate_)
+			return miss;
+			
 		// list is full
 		if (cache_[index].list.size() == cache_set_size_)
 		{
@@ -87,3 +86,48 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 
 	return miss;
 };
+
+// random replacement cache
+template<bool is_lru>
+bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
+	requires (not is_lru)
+{
+	bool miss = false;
+	const uint_fast8_t index = (address >> offset_size_) & ((1 << (index_size_ + 1)) - 1);
+
+	cache_block_t block_id{address, is_read, tag_size_};
+	
+	// not in cache
+	if (cache_[index].map.find(block_id) == cache_[index].map.end())
+	{
+		miss = true;
+		// if we have a miss a write with a no-write allocate cache 
+		// then we reuturn here without adding the block to the cache
+		if (!is_read && !is_write_allocate_)
+			return miss;
+			
+		// list is full
+		if (cache_[index].list.size() == cache_set_size_)
+		{
+			std::uniform_int_distribution<std::size_t> dist(0, cache_[index].list.size() - 1);
+			// get random index in the array
+			auto i = 	dist(kGen);
+
+			// remove the random block in the cache
+			cache_[index].map.erase(cache_[index].list[i]);
+			// replace the deleted block with the new block
+			cache_[index].list[i] = block_id;
+			// put the new block into the cache
+			cache_[index].map.insert(std::move(block_id));
+		}
+		else {
+			cache_[index].list.push_back(block_id);
+			cache_[index].map.insert(std::move(block_id));
+		}
+	}
+
+	return miss;
+};
+
+template <bool is_lru>
+std::mt19937 Cache<is_lru>::kGen(std::random_device{}()); 
