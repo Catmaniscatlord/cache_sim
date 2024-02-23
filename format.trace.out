@@ -1,0 +1,12 @@
+Total Hit Rate: percent of memory ops that were hits
+Load Hit Rate: percent of loads that were hits
+Store Hit Rate: percent of loads that were hits
+Total Run Time: Clock cycles. *assume all other operations are 1 clock cycle*
+Average Memory Access Latency: average number of cycles to complete a memory access
+
+Example
+12.2398
+9.23532
+50.2134
+1204938
+3.42849
