@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 3.11)
 # LIBRARY CREATION #
 ####################
 add_library(libCacheSim STATIC cache_sim.cpp cache_sim.hpp)
-target_compile_options(libCacheSim PRIVATE -Wall -Wextra)
 
 ####################
 # MAIN EXECUTEABLE #
