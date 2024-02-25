@@ -16,6 +16,7 @@
 
 #include "cache_sim.hpp"
 #include <cstdint>
+#include <iostream>
 
 void CacheSim::RunSimulation()
 {
@@ -27,28 +28,34 @@ void CacheSim::RunSimulation()
 	uint64_t rm{}; // read misses
 	uint64_t wm{}; // write misses
 	uint64_t rt{}; // run time
+	uint64_t at{}; // access time
 
-	for (auto &memory_access : stack_trace_)
+	for (auto &ma : stack_trace_)
 	{
-		if (!cache_wrapper_.AccessMemory(memory_access.address, memory_access.is_read))
+		if (ma.is_read)
+			rc++;
+		else
+			wc++;
+		rt += ma.last_memory_access_count + 1;
+
+		if (!cache_wrapper_.AccessMemory(ma.address, ma.is_read))
 		{
-			if (memory_access.is_read)
-			{
-				rc++;
-				rm += memory_access.last_memory_access_count;
-			}
+			rt += cache_conf_.miss_penalty;
+			at += cache_conf_.miss_penalty;
+			if (ma.is_read)
+				rm++;
 			else
-			{
-				wc++;
-				wm += memory_access.last_memory_access_count;
-			}
+				wm++;
 		}
+		else
+			at++;
 	}
 
-	results_.total_hit_rate = static_cast<float>(rm + wm) / tc;
-	results_.read_hit_rate = static_cast<float>(rm) / rc;
-	results_.write_hit_rate = static_cast<float>(wm) / wc;
+	results_.total_hit_rate = 1.0f - static_cast<float>(rm + wm) / static_cast<float>(tc);
+	results_.read_hit_rate = 1.0f - static_cast<float>(rm) / static_cast<float>(rc);
+	results_.write_hit_rate = 1.0f - static_cast<float>(wm) / static_cast<float>(wc);
 	results_.run_time = rt;
+	results_.average_memory_access_time = static_cast<double>(at)/static_cast<double>(tc);
 }
 
 // Least Recently Used
@@ -56,18 +63,20 @@ template <bool is_lru>
 bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	requires is_lru
 {
-	bool miss = false;
-	const uint_fast8_t index = (address >> offset_size_) & ((1 << (index_size_ + 1)) - 1);
+	bool hit = true;
+	
+	const uint_fast8_t index = static_cast<uint_fast8_t>((address >> offset_size_) & ((1 << index_size_) - 1));
 
 	cache_block_t block_id{address, is_read, tag_size_};
+
 	// not in cache
 	if (cache_[index].map.find(block_id) == cache_[index].map.end())
 	{
-		miss = true;
+		hit = false;
 		// if we have a miss a write with a no-write allocate cache 
 		// then we reuturn here without adding the block to the cache
 		if (!is_read && !is_write_allocate_)
-			return miss;
+			return hit;
 			
 		// list is full
 		if (cache_[index].list.size() == cache_set_size_)
@@ -84,7 +93,7 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	cache_[index].list.push_front(block_id);
 	cache_[index].map.insert(std::make_pair(block_id, cache_[index].list.begin()));
 
-	return miss;
+	return hit;
 };
 
 // random replacement cache
@@ -92,26 +101,27 @@ template<bool is_lru>
 bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	requires (not is_lru)
 {
-	bool miss = false;
-	const uint_fast8_t index = (address >> offset_size_) & ((1 << (index_size_ + 1)) - 1);
+
+	bool hit = true;
+	const uint_fast8_t index = static_cast<uint_fast8_t>((address >> offset_size_) & ((1 << index_size_) - 1));
 
 	cache_block_t block_id{address, is_read, tag_size_};
 	
 	// not in cache
 	if (cache_[index].map.find(block_id) == cache_[index].map.end())
 	{
-		miss = true;
+		hit = false;
 		// if we have a miss a write with a no-write allocate cache 
 		// then we reuturn here without adding the block to the cache
 		if (!is_read && !is_write_allocate_)
-			return miss;
+			return hit;
 			
 		// list is full
 		if (cache_[index].list.size() == cache_set_size_)
 		{
 			std::uniform_int_distribution<std::size_t> dist(0, cache_[index].list.size() - 1);
 			// get random index in the array
-			auto i = 	dist(kGen);
+			auto i =	dist(kGen);
 
 			// remove the random block in the cache
 			cache_[index].map.erase(cache_[index].list[i]);
@@ -126,7 +136,7 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 		}
 	}
 
-	return miss;
+	return hit;
 };
 
 template <bool is_lru>

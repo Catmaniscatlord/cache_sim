@@ -1,3 +1,19 @@
+####
+# filename: CMakeLists.txt
+#
+# description: Build file
+#
+# authors: Chamberlain, David
+#
+# class: CSE 3031
+# instructor: Zheng
+# assignment: Lab #2
+#
+# assigned: 2/22/2024
+# due: 3/7/2024
+#
+####
+
 cmake_minimum_required(VERSION 3.11)
 	
 ####################
@@ -8,7 +24,7 @@ add_library(libCacheSim STATIC cache_sim.cpp cache_sim.hpp)
 ####################
 # MAIN EXECUTEABLE #
 ####################
-add_executable(Main main.cpp)
+add_executable(Main main.cpp util.hpp util.cpp)
 
 target_link_libraries(Main libCacheSim)
 
