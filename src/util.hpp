@@ -22,8 +22,8 @@
 
 namespace Util
 {
-    std::optional<CacheConf> ReadCacheFile(const std::string &s);
-    std::optional<CacheConf> ReadCacheFile(std::string &&s);
+    std::optional<CacheConf> ReadCacheConfFile(const std::string &s);
+    std::optional<CacheConf> ReadCacheConfFile(std::string &&s);
 
     std::optional<StackTrace> ReadStackTraceFile(const std::string &s);
     std::optional<StackTrace> ReadStackTraceFile(std::string &&s);

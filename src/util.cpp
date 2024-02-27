@@ -25,7 +25,7 @@
 namespace Util
 {
 
-	std::optional<CacheConf> ReadCacheFile(const std::string &s)
+	std::optional<CacheConf> ReadCacheConfFile(const std::string &s)
 	{
 		CacheConf conf{};
 		std::ifstream file(s, std::ios_base::in);
@@ -36,7 +36,6 @@ namespace Util
 
 		unsigned int tmp;
 		file >> tmp;
-		std::cerr << tmp << std::endl;
 		conf.block_size = static_cast<uint_fast8_t>(tmp);
 		file >> tmp;
 		conf.associativity = static_cast<uint_fast8_t>(tmp);
@@ -54,7 +53,7 @@ namespace Util
 		return conf;
 	}
 
-	std::optional<CacheConf> ReadCacheFile(std::string &&s)
+	std::optional<CacheConf> ReadCacheConfFile(std::string &&s)
 	{
 		CacheConf conf{};
 		std::ifstream file(s, std::ios_base::in);

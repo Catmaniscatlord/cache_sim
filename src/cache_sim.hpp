@@ -23,8 +23,12 @@
 #include <ostream>
 #include <random>
 #include <type_traits>
+#include <typeinfo>
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include <algorithm>
 
@@ -94,17 +98,17 @@ struct cache_block_t
 
 	cache_block_t(address_t address, bool dirty, uint_fast8_t tag_size) : block_address_(address), dirty_(dirty), tag_size_(tag_size){};
 
-	bool operator==(const cache_block_t &other) const
+	bool operator==(const cache_block_t &other) const noexcept
 	{
 		return (block_address_ >> ((8 * sizeof(address_t)) - tag_size_)) == (other.block_address_ >> ((8 * sizeof(address_t)) - tag_size_));
 	}
 };
 
 // Create a specific hash function for a cache block
-template <>
+template<>
 struct std::hash<cache_block_t>
 {
-	size_t operator()(const cache_block_t &cb) const noexcept
+	std::size_t operator()(const cache_block_t& cb) const noexcept
 	{
 		return (cb.block_address_ >> ((8 * sizeof(address_t)) - cb.tag_size_));
 	}
@@ -150,6 +154,12 @@ struct CacheIndex
 		if constexpr (not is_lru)
 			list.reserve(cache_set_size_);
 	};
+
+	void clear()
+	{
+		map.clear();
+		list.clear();
+	}
 	
 };
 
@@ -195,11 +205,8 @@ public:
 
 	void ClearCache()
 	{
-		// I would clear the cache indexes instead of resetting them. 
-		// but for some reason that causes creashes
-		cache_.clear();
-		for (int i = 0; i < associativity_; i++)
-			cache_.emplace_back(CacheIndex<is_lru>(cache_set_size_));
+		for(auto& ci : cache_)
+			ci.clear();
 	}
 
 private:
@@ -290,17 +297,20 @@ private:
 class CacheSim
 {
 public:
-	CacheSim() = default;
+	CacheSim() :stack_trace_ref_(&stack_trace_) {};
 
-	CacheSim(CacheConf cache_conf, const StackTrace &stack_trace)
-		: cache_conf_(cache_conf), stack_trace_(stack_trace)
+	CacheSim(CacheConf cache_conf)
+		: cache_conf_(cache_conf), stack_trace_ref_(&stack_trace_)
 	{
 		set_cache_config(cache_conf);
-	};
-	CacheSim(CacheConf cache_conf, StackTrace &&stack_trace) noexcept
-		: cache_conf_(cache_conf), stack_trace_(std::move(stack_trace))
-	{ 
+	}
+
+	template<typename Arg>
+	CacheSim(CacheConf cache_conf, Arg&& stack_trace)
+		: cache_conf_(cache_conf)
+	{
 		set_cache_config(cache_conf);
+		set_stack_trace(std::forward<Arg>(stack_trace));
 	};
 
 	/**
@@ -325,19 +335,26 @@ public:
 		return cache_conf_;
 	};
 
-	void set_stack_trace(const StackTrace &stack_trace)
+	// This allows us to store references to objects
+	// as well as store them if desired
+	template<typename T>
+	void set_stack_trace(T&& stack_trace)
 	{
-		stack_trace_ = stack_trace;
-	};
-
-	void set_stack_trace(StackTrace &&stack_trace) noexcept
-	{
-		// due to stack traces being very large, we only benefit from
-		// move semantics if the member is unitilaized
-		if (stack_trace_.empty())
-			stack_trace_ = std::move(stack_trace);
-
-		stack_trace_ = stack_trace;
+		if constexpr(std::is_pointer_v<T>)
+		{
+			stack_trace_ref_ = stack_trace;
+			stack_trace_.clear();
+		}
+		else if constexpr (std::is_lvalue_reference_v<T>)
+		{
+			stack_trace_ref_ = &stack_trace;
+			stack_trace_.clear();
+		}
+		else
+		{
+			stack_trace_ = stack_trace;	
+			stack_trace_ref_ = &stack_trace_;
+		}
 	};
 
 	void ClearCache()
@@ -355,5 +372,6 @@ private:
 	CacheConf cache_conf_;
 	// change this to a shared pointer for improved efficiency
 	StackTrace stack_trace_;
+	StackTrace* stack_trace_ref_;
 	Results results_;
 };

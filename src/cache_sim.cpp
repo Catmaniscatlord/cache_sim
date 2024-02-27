@@ -16,11 +16,12 @@
 
 #include "cache_sim.hpp"
 #include <cstdint>
+#include <utility>
 
 void CacheSim::RunSimulation()
 {
 	// memory access count
-	const auto tc = stack_trace_.size();
+	const auto tc = stack_trace_ref_->size();
 
 	uint64_t rc{}; // read count
 	uint64_t wc{}; // write count
@@ -29,13 +30,13 @@ void CacheSim::RunSimulation()
 	uint64_t rt{}; // run time
 	uint64_t at{}; // access time
 
-	for (auto &ma : stack_trace_)
+	for (auto &ma : *stack_trace_ref_)
 	{
 		if (ma.is_read)
 			rc++;
 		else
 			wc++;
-		rt += ma.last_memory_access_count + 1;
+		rt += ma.last_memory_access_count;
 
 		// if miss
 		if (!cache_wrapper_.AccessMemory(ma.address, ma.is_read))
@@ -48,8 +49,11 @@ void CacheSim::RunSimulation()
 				wm++;
 		}
 		else
+		{
 			// if hit
+			rt++;
 			at++;
+		}
 	}
 
 	results_.total_hit_rate = 1.0f - static_cast<float>(rm + wm) / static_cast<float>(tc);
@@ -71,7 +75,7 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	cache_block_t block_id{address, is_read, tag_size_};
 
 	// not in cache
-	if (cache_[index].map.find(block_id) == cache_[index].map.end())
+	if (!cache_[index].map.contains(block_id))
 	{
 		hit = false;
 		// if we have a miss a write with a no-write allocate cache 
@@ -92,7 +96,7 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 		 cache_[index].list.erase(cache_[index].map[block_id]);
 
 	cache_[index].list.push_front(block_id);
-	cache_[index].map.emplace(std::make_pair(block_id, cache_[index].list.begin()));
+	cache_[index].map.insert_or_assign(std::move(block_id), cache_[index].list.begin());
 
 	return hit;
 };
@@ -108,7 +112,7 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	cache_block_t block_id{address, is_read, tag_size_};
 	
 	// not in cache
-	if (cache_[index].map.find(block_id) == cache_[index].map.end())
+	if (!cache_[index].map.contains(block_id))
 	{
 		hit = false;
 		// if we have a miss a write with a no-write allocate cache 
