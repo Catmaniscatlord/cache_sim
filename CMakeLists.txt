@@ -14,14 +14,11 @@
 #
 ####
 
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.20)
 include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Enforce a strcit compiler over the whole project
-add_compile_options(-Werror -Wall -Wextra -Wconversion)
 
 # to fix clang errors
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -35,5 +32,29 @@ add_subdirectory(src)
 FetchContent_Declare(
 	googletest
 	URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+	DOWNLOAD_NO_EXTRACT FALSE
+	DOWNLOAD_EXTRACT_TIMESTAMP NEW
 	)
-FetchContent_MakeAvailable(googletest)
+
+set(BOOST_INCLUDE_LIBRARIES program_options unordered)
+set(BOOST_ENABLE_CMAKE ON)
+include(FetchContent)
+FetchContent_Declare(
+	Boost
+	URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz 
+	USES_TERMINAL_DOWNLOAD TRUE 
+	DOWNLOAD_NO_EXTRACT FALSE
+	DOWNLOAD_EXTRACT_TIMESTAMP NEW
+)
+FetchContent_MakeAvailable(Boost googletest)
+
+########################
+# Project Wide Options #
+########################
+
+# This is AFTER the fetch contents
+# otherwise we will compile the packages we include 
+# with our strick compiler settings.
+
+# Enforce a strict compiler over the whole project
+add_compile_options(-Werror -Wall -Wextra -Wconversion)

@@ -18,21 +18,42 @@
 #include "util.hpp"
 
 #include <iostream>
+#include <chrono>
 
 // int main(int argc, char** argv)
 int main()
 {
-	auto cache_conf = Util::ReadCacheFile("../confs/4way-fifo.conf");
+	auto cache_conf = Util::ReadCacheFile("../sample.conf");
 
 	if (!cache_conf.has_value())
+	{
 		std::cerr << "cache file not found" << std::endl;
+		return 1;
+	}
 
 	auto stack_trace = Util::ReadStackTraceFile("../traces/mcf.trace");
 	if (!stack_trace.has_value())
 		std::cerr << "trace file not found" << std::endl;
 
 	CacheSim cache_sim = CacheSim(cache_conf.value(), std::move(stack_trace.value()));
+
 	cache_sim.RunSimulation();
+	cache_sim.RunSimulation();
+	cache_sim.ClearCache();
+
+	stack_trace = Util::ReadStackTraceFile("../traces/gcc.trace");
+
+	cache_sim.set_stack_trace(stack_trace.value());
+
+	cache_sim.RunSimulation();
+	cache_sim.set_stack_trace(stack_trace.value());
+	cache_sim.ClearCache();
+	cache_sim.RunSimulation();
+	cache_sim.ClearCache();
+	cache_sim.ClearCache();
+	cache_sim.RunSimulation();
+	cache_sim.RunSimulation();
+
 	Results res = cache_sim.results();
 
 	std::cout << "Total Hit Rate\t : " << res.total_hit_rate << std::endl;

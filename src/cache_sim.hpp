@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <bit>
 #include <cstdint>
 #include <list>
@@ -82,16 +83,20 @@ typedef std::vector<MemoryAccess> StackTrace;
 
 struct cache_block_t
 {
-	address_t block_address;
+	address_t block_address_;
 	// the dirty bit and its functionality is useless
 	// unless he gives some clock times for write-through
 	// and write-back
-	bool dirty;
-	uint_fast8_t tag_size;
+	bool dirty_;
+	uint_fast8_t tag_size_;
+
+	cache_block_t() = default;
+
+	cache_block_t(address_t address, bool dirty, uint_fast8_t tag_size) : block_address_(address), dirty_(dirty), tag_size_(tag_size){};
 
 	bool operator==(const cache_block_t &other) const
 	{
-		return (block_address >> ((8 * sizeof(address_t)) - tag_size)) == (other.block_address >> ((8 * sizeof(address_t)) - tag_size));
+		return (block_address_ >> ((8 * sizeof(address_t)) - tag_size_)) == (other.block_address_ >> ((8 * sizeof(address_t)) - tag_size_));
 	}
 };
 
@@ -101,7 +106,7 @@ struct std::hash<cache_block_t>
 {
 	size_t operator()(const cache_block_t &cb) const noexcept
 	{
-		return (cb.block_address >> ((8 * sizeof(address_t)) - cb.tag_size));
+		return (cb.block_address_ >> ((8 * sizeof(address_t)) - cb.tag_size_));
 	}
 };
 
@@ -136,13 +141,16 @@ struct CacheIndex
 
 	BlockMap map;
 
-	CacheIndex(address_t cache_set_size)
+	address_t cache_set_size_;
+
+	CacheIndex(address_t cache_set_size) : cache_set_size_(cache_set_size)
 	{
-		map.reserve(cache_set_size);
+		map.reserve(cache_set_size_);
 
 		if constexpr (not is_lru)
-			list.reserve(cache_set_size);
+			list.reserve(cache_set_size_);
 	};
+	
 };
 
 /**
@@ -164,7 +172,7 @@ public:
 		associativity_ = cc.associativity;
 		block_size_ = cc.block_size;
 		is_write_allocate_ = cc.write_allocate;
-		cache_set_size_ = (cc.cache_size / cc.associativity) / cc.block_size,
+		cache_set_size_ = (cc.cache_size / cc.associativity) / cc.block_size;
 		offset_size_ = static_cast<uint_fast8_t>(std::bit_width(cc.block_size) - 1);
 		index_size_ = static_cast<uint_fast8_t>(std::bit_width(cc.associativity) - 1);
 
@@ -172,7 +180,7 @@ public:
 
 		cache_.reserve(associativity_);
 		for (int i = 0; i < associativity_; i++)
-			cache_.push_back(CacheIndex<is_lru>(cache_set_size_));
+			cache_.emplace_back(CacheIndex<is_lru>(cache_set_size_));
 	};
 
 	/**
@@ -183,7 +191,16 @@ public:
 	bool AccessMemory(address_t address, bool read)
 		requires is_lru;
 	bool AccessMemory(address_t address, bool read)
-		requires(not is_lru);
+		requires (not is_lru);
+
+	void ClearCache()
+	{
+		// I would clear the cache indexes instead of resetting them. 
+		// but for some reason that causes creashes
+		cache_.clear();
+		for (int i = 0; i < associativity_; i++)
+			cache_.emplace_back(CacheIndex<is_lru>(cache_set_size_));
+	}
 
 private:
 	static std::mt19937 kGen;
@@ -221,6 +238,14 @@ public:
 			return lru_cache_.AccessMemory(address, read);
 		else
 			return random_cache_.AccessMemory(address, read);
+	}
+
+	auto ClearCache()
+	{
+		if (is_lru_)
+			return lru_cache_.ClearCache();
+		else
+			return random_cache_.ClearCache();
 	}
 
 	// Move semantics :)
@@ -267,7 +292,6 @@ class CacheSim
 public:
 	CacheSim() = default;
 
-	// stack trace will be huge and expensive to move twice
 	CacheSim(CacheConf cache_conf, const StackTrace &stack_trace)
 		: cache_conf_(cache_conf), stack_trace_(stack_trace)
 	{
@@ -275,7 +299,7 @@ public:
 	};
 	CacheSim(CacheConf cache_conf, StackTrace &&stack_trace) noexcept
 		: cache_conf_(cache_conf), stack_trace_(std::move(stack_trace))
-	{
+	{ 
 		set_cache_config(cache_conf);
 	};
 
@@ -316,6 +340,11 @@ public:
 		stack_trace_ = stack_trace;
 	};
 
+	void ClearCache()
+	{
+		cache_wrapper_.ClearCache();
+	}
+	
 	Results results()
 	{
 		return results_;
@@ -324,6 +353,7 @@ public:
 private:
 	CacheWrapper cache_wrapper_;
 	CacheConf cache_conf_;
+	// change this to a shared pointer for improved efficiency
 	StackTrace stack_trace_;
 	Results results_;
 };

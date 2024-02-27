@@ -16,7 +16,6 @@
 
 #include "cache_sim.hpp"
 #include <cstdint>
-#include <iostream>
 
 void CacheSim::RunSimulation()
 {
@@ -38,6 +37,7 @@ void CacheSim::RunSimulation()
 			wc++;
 		rt += ma.last_memory_access_count + 1;
 
+		// if miss
 		if (!cache_wrapper_.AccessMemory(ma.address, ma.is_read))
 		{
 			rt += cache_conf_.miss_penalty;
@@ -48,6 +48,7 @@ void CacheSim::RunSimulation()
 				wm++;
 		}
 		else
+			// if hit
 			at++;
 	}
 
@@ -88,10 +89,10 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 		}
 	}
 	else
-		cache_[index].list.erase(cache_[index].map[block_id]);
+		 cache_[index].list.erase(cache_[index].map[block_id]);
 
 	cache_[index].list.push_front(block_id);
-	cache_[index].map.insert(std::make_pair(block_id, cache_[index].list.begin()));
+	cache_[index].map.emplace(std::make_pair(block_id, cache_[index].list.begin()));
 
 	return hit;
 };
@@ -101,7 +102,6 @@ template<bool is_lru>
 bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	requires (not is_lru)
 {
-
 	bool hit = true;
 	const uint_fast8_t index = static_cast<uint_fast8_t>((address >> offset_size_) & ((1 << index_size_) - 1));
 
@@ -112,7 +112,7 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 	{
 		hit = false;
 		// if we have a miss a write with a no-write allocate cache 
-		// then we reuturn here without adding the block to the cache
+		// then we reuturn here without adding the block to the cache 
 		if (!is_read && !is_write_allocate_)
 			return hit;
 			
@@ -128,11 +128,11 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 			// replace the deleted block with the new block
 			cache_[index].list[i] = block_id;
 			// put the new block into the cache
-			cache_[index].map.insert(std::move(block_id));
+			cache_[index].map.emplace(std::move(block_id));
 		}
 		else {
 			cache_[index].list.push_back(block_id);
-			cache_[index].map.insert(std::move(block_id));
+			cache_[index].map.emplace(std::move(block_id));
 		}
 	}
 
