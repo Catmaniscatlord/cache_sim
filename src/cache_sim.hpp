@@ -16,21 +16,21 @@
 
 #pragma once
 
-#include <iostream>
+#include <algorithm>
 #include <bit>
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include <cstdint>
+#include <iostream>
 #include <list>
 #include <ostream>
 #include <random>
 #include <type_traits>
 #include <typeinfo>
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include <algorithm>
 
 using address_t = uint32_t;
 
@@ -78,7 +78,8 @@ struct MemoryAccess
 	friend std::ostream &operator<<(std::ostream &os, const MemoryAccess &ma)
 	{
 		os << (ma.is_read ? "l" : "s") << " "
-		   << "0x" << std::hex << ma.address << " " << static_cast<unsigned int>(ma.last_memory_access_count);
+		   << "0x" << std::hex << ma.address << " "
+		   << static_cast<unsigned int>(ma.last_memory_access_count);
 		return os;
 	};
 };
@@ -96,19 +97,21 @@ struct cache_block_t
 
 	cache_block_t() = default;
 
-	cache_block_t(address_t address, bool dirty, uint_fast8_t tag_size) : block_address_(address), dirty_(dirty), tag_size_(tag_size){};
+	cache_block_t(address_t address, bool dirty, uint_fast8_t tag_size)
+		: block_address_(address), dirty_(dirty), tag_size_(tag_size){};
 
 	bool operator==(const cache_block_t &other) const noexcept
 	{
-		return (block_address_ >> ((8 * sizeof(address_t)) - tag_size_)) == (other.block_address_ >> ((8 * sizeof(address_t)) - tag_size_));
+		return (block_address_ >> ((8 * sizeof(address_t)) - tag_size_)) ==
+			   (other.block_address_ >> ((8 * sizeof(address_t)) - tag_size_));
 	}
 };
 
 // Create a specific hash function for a cache block
-template<>
+template <>
 struct std::hash<cache_block_t>
 {
-	std::size_t operator()(const cache_block_t& cb) const noexcept
+	std::size_t operator()(const cache_block_t &cb) const noexcept
 	{
 		return (cb.block_address_ >> ((8 * sizeof(address_t)) - cb.tag_size_));
 	}
@@ -130,9 +133,8 @@ struct CacheIndex
 {
 	// These could be made faster if they pointed to where the cache
 	// blocks were in the block map. Either way its O(1)
-	using ReplaceList = std::conditional_t<is_lru,
-										   std::list<cache_block_t>,
-										   std::vector<cache_block_t>>;
+	using ReplaceList =
+		std::conditional_t<is_lru, std::list<cache_block_t>, std::vector<cache_block_t>>;
 
 	// If LRU, the list is an LRU list of the blocks.
 	// If random, the list is a vector that can be randomly accessed
@@ -151,8 +153,7 @@ struct CacheIndex
 	{
 		map.reserve(cache_set_size_);
 
-		if constexpr (not is_lru)
-			list.reserve(cache_set_size_);
+		if constexpr (not is_lru) list.reserve(cache_set_size_);
 	};
 
 	void clear()
@@ -160,7 +161,6 @@ struct CacheIndex
 		map.clear();
 		list.clear();
 	}
-	
 };
 
 /**
@@ -199,13 +199,13 @@ public:
 	 * the cacche uses random vs LRU for replaccement
 	 **/
 	bool AccessMemory(address_t address, bool read)
-		requires is_lru;
+	requires is_lru;
 	bool AccessMemory(address_t address, bool read)
-		requires (not is_lru);
+	requires (not is_lru);
 
 	void ClearCache()
 	{
-		for(auto& ci : cache_)
+		for (auto &ci : cache_)
 			ci.clear();
 	}
 
@@ -257,7 +257,7 @@ public:
 
 	// Move semantics :)
 	template <bool is_lru>
-		requires is_lru
+	requires is_lru
 	void set_cache(const Cache<is_lru> &cache)
 	{
 		is_lru_ = is_lru;
@@ -265,7 +265,7 @@ public:
 	};
 
 	template <bool is_lru>
-		requires(not is_lru)
+	requires (not is_lru)
 	void set_cache(const Cache<is_lru> &cache)
 	{
 		is_lru_ = is_lru;
@@ -273,7 +273,7 @@ public:
 	};
 
 	template <bool is_lru>
-		requires is_lru
+	requires is_lru
 	void set_cache(Cache<is_lru> &&cache) noexcept
 	{
 		is_lru_ = is_lru;
@@ -281,7 +281,7 @@ public:
 	};
 
 	template <bool is_lru>
-		requires(not is_lru)
+	requires (not is_lru)
 	void set_cache(Cache<is_lru> &&cache) noexcept
 	{
 		is_lru_ = is_lru;
@@ -297,17 +297,15 @@ private:
 class CacheSim
 {
 public:
-	CacheSim() :stack_trace_ref_(&stack_trace_) {};
+	CacheSim() : stack_trace_ref_(&stack_trace_){};
 
-	CacheSim(CacheConf cache_conf)
-		: cache_conf_(cache_conf), stack_trace_ref_(&stack_trace_)
+	CacheSim(CacheConf cache_conf) : cache_conf_(cache_conf), stack_trace_ref_(&stack_trace_)
 	{
 		set_cache_config(cache_conf);
 	}
 
-	template<typename Arg>
-	CacheSim(CacheConf cache_conf, Arg&& stack_trace)
-		: cache_conf_(cache_conf)
+	template <typename Arg>
+	CacheSim(CacheConf cache_conf, Arg &&stack_trace) : cache_conf_(cache_conf)
 	{
 		set_cache_config(cache_conf);
 		set_stack_trace(std::forward<Arg>(stack_trace));
@@ -337,10 +335,10 @@ public:
 
 	// This allows us to store references to objects
 	// as well as store them if desired
-	template<typename T>
-	void set_stack_trace(T&& stack_trace)
+	template <typename T>
+	void set_stack_trace(T &&stack_trace)
 	{
-		if constexpr(std::is_pointer_v<T>)
+		if constexpr (std::is_pointer_v<T>)
 		{
 			stack_trace_ref_ = stack_trace;
 			stack_trace_.clear();
@@ -352,7 +350,7 @@ public:
 		}
 		else
 		{
-			stack_trace_ = stack_trace;	
+			stack_trace_ = stack_trace;
 			stack_trace_ref_ = &stack_trace_;
 		}
 	};
@@ -361,7 +359,7 @@ public:
 	{
 		cache_wrapper_.ClearCache();
 	}
-	
+
 	Results results()
 	{
 		return results_;
@@ -372,6 +370,6 @@ private:
 	CacheConf cache_conf_;
 	// change this to a shared pointer for improved efficiency
 	StackTrace stack_trace_;
-	StackTrace* stack_trace_ref_;
+	StackTrace *stack_trace_ref_;
 	Results results_;
 };

@@ -16,15 +16,15 @@
 
 #pragma once
 
-#include "cache_sim.hpp"
-
 #include <optional>
+
+#include "cache_sim.hpp"
 
 namespace Util
 {
-    std::optional<CacheConf> ReadCacheConfFile(const std::string &s);
-    std::optional<CacheConf> ReadCacheConfFile(std::string &&s);
+std::optional<CacheConf> ReadCacheConfFile(const std::string &s);
+std::optional<CacheConf> ReadCacheConfFile(std::string &&s);
 
-    std::optional<StackTrace> ReadStackTraceFile(const std::string &s);
-    std::optional<StackTrace> ReadStackTraceFile(std::string &&s);
-}
+std::optional<StackTrace> ReadStackTraceFile(const std::string &s);
+std::optional<StackTrace> ReadStackTraceFile(std::string &&s);
+}  // namespace Util
