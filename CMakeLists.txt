@@ -38,7 +38,6 @@ FetchContent_Declare(
 
 set(BOOST_INCLUDE_LIBRARIES program_options unordered)
 set(BOOST_ENABLE_CMAKE ON)
-include(FetchContent)
 FetchContent_Declare(
 	Boost
 	URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz 
@@ -46,7 +45,15 @@ FetchContent_Declare(
 	DOWNLOAD_NO_EXTRACT FALSE
 	DOWNLOAD_EXTRACT_TIMESTAMP NEW
 )
-FetchContent_MakeAvailable(Boost googletest)
+
+FetchContent_Declare(
+	matplotplusplus
+	URL https://github.com/alandefreitas/matplotplusplus/archive/refs/tags/v1.2.1.tar.gz
+	USES_TERMINAL_DOWNLOAD TRUE 
+	DOWNLOAD_NO_EXTRACT FALSE
+	DOWNLOAD_EXTRACT_TIMESTAMP NEW
+)
+FetchContent_MakeAvailable(Boost googletest matplotplusplus)
 
 ########################
 # Project Wide Options #

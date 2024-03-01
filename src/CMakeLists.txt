@@ -27,7 +27,7 @@ target_link_libraries(libCacheSim Boost::unordered)
 ####################
 add_executable(Main main.cpp util.hpp util.cpp)
 
-target_link_libraries(Main libCacheSim Boost::program_options)
+target_link_libraries(Main libCacheSim Boost::program_options matplot)
 
 ###########
 # TESTING #

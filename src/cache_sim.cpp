@@ -57,9 +57,9 @@ void CacheSim::RunSimulation()
 		}
 	}
 
-	results_.total_hit_rate = 1.0f - static_cast<float>(rm + wm) / static_cast<float>(tc);
-	results_.read_hit_rate = 1.0f - static_cast<float>(rm) / static_cast<float>(rc);
-	results_.write_hit_rate = 1.0f - static_cast<float>(wm) / static_cast<float>(wc);
+	results_.total_hit_rate = 1.0f - static_cast<double>(rm + wm) / static_cast<double>(tc);
+	results_.read_hit_rate = 1.0f - static_cast<double>(rm) / static_cast<double>(rc);
+	results_.write_hit_rate = 1.0f - static_cast<double>(wm) / static_cast<double>(wc);
 	results_.run_time = rt;
 	results_.average_memory_access_time = static_cast<double>(at) / static_cast<double>(tc);
 }

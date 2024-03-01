@@ -26,7 +26,6 @@
 #include <ostream>
 #include <random>
 #include <type_traits>
-#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -54,9 +53,9 @@ struct CacheConf
 
 struct Results
 {
-	float total_hit_rate;
-	float read_hit_rate;
-	float write_hit_rate;
+	double total_hit_rate;
+	double read_hit_rate;
+	double write_hit_rate;
 	uint64_t run_time;
 	double average_memory_access_time;
 };
