@@ -29,21 +29,21 @@
 #include <thread>
 
 #include "cache_sim.hpp"
-#include "matplot/axes_objects/histogram.h"
 #include "matplot/core/figure_registry.h"
 #include "matplot/freestanding/axes_functions.h"
 #include "matplot/freestanding/plot.h"
-#include "matplot/util/colors.h"
 #include "matplot/util/common.h"
 #include "util.hpp"
 
 namespace po = boost::program_options;
 
 void CreateOutputFiles(
-	std::map<std::string, std::map<std::string, Results>> &results_map, std::string &output_folder);
+	std::map<std::string, std::map<std::string, Results>> &results_map,
+	std::string &output_folder);
 
 void CreateOutputImages(
-	std::map<std::string, std::map<std::string, Results>> &results_map, std::string &output_folder);
+	std::map<std::string, std::map<std::string, Results>> &results_map,
+	std::string &output_folder);
 
 int main(int argc, char **argv)
 {
@@ -73,14 +73,17 @@ int main(int argc, char **argv)
 
 	if (vm.count("stack-trace"))
 	{
-		for (const std::string &st_file : vm["stack-trace"].as<std::vector<std::string>>())
+		for (const std::string &st_file :
+			 vm["stack-trace"].as<std::vector<std::string>>())
 		{
 			auto st = Util::ReadStackTraceFile(st_file);
 			if (st.has_value())
-				st_arr.push_back({st.value(), std::filesystem::path(st_file).filename()});
+				st_arr.push_back(
+					{st.value(), std::filesystem::path(st_file).filename()});
 			else
 			{
-				std::cerr << "Stack Trace file " << st_file << " not found" << std::endl;
+				std::cerr << "Stack Trace file " << st_file << " not found"
+						  << std::endl;
 				return 1;
 			}
 		}
@@ -88,14 +91,17 @@ int main(int argc, char **argv)
 
 	if (vm.count("cache-conf"))
 	{
-		for (const std::string &cc_file : vm["cache-conf"].as<std::vector<std::string>>())
+		for (const std::string &cc_file :
+			 vm["cache-conf"].as<std::vector<std::string>>())
 		{
 			auto cc = Util::ReadCacheConfFile(cc_file);
 			if (cc.has_value())
-				cc_arr.push_back({cc.value(), std::filesystem::path(cc_file).filename()});
+				cc_arr.push_back(
+					{cc.value(), std::filesystem::path(cc_file).filename()});
 			else
 			{
-				std::cerr << "Cache Config file " << cc_file << " not found" << std::endl;
+				std::cerr << "Cache Config file " << cc_file << " not found"
+						  << std::endl;
 				return 1;
 			}
 		}
@@ -132,44 +138,54 @@ int main(int argc, char **argv)
 	for (auto &i : sim_threads)
 		i.join();
 
-	// CreateOutputFiles(results_map, output_folder);
+	CreateOutputFiles(results_map, output_folder);
 	CreateOutputImages(results_map, output_folder);
 }
 
 void CreateOutputFiles(
-	std::map<std::string, std::map<std::string, Results>> &results_map, std::string &output_folder)
+	std::map<std::string, std::map<std::string, Results>> &results_map,
+	std::string &output_folder)
 {
 	for (auto &st_res : results_map)
 	{
 		for (auto &cc_res : st_res.second)
 		{
-			std::string output_file_name =
-				output_folder + "/" + st_res.first + "." + cc_res.first + ".out";
-			std::ofstream output_file(std::move(output_file_name), std::ios::trunc | std::ios::out);
+			std::string output_file_name = output_folder + "/" + st_res.first +
+										   "." + cc_res.first + ".out";
+			std::ofstream output_file(
+				std::move(output_file_name), std::ios::trunc | std::ios::out);
 			if (!output_file)
 				std::cerr << "error creating output file\n";
 			Results res = cc_res.second;
-			output_file << "Total Hit Rate\t : " << res.total_hit_rate << std::endl;
-			output_file << "Load Hit Rate\t : " << res.read_hit_rate << std::endl;
-			output_file << "Write Hit Rate\t : " << res.write_hit_rate << std::endl;
-			output_file << "Total Run Time\t : " << res.run_time << std::endl;
-			output_file << "Average Memory Access Latency\t : " << res.average_memory_access_time
+			output_file << "Total Hit Rate\t : " << res.total_hit_rate
 						<< std::endl;
+			output_file << "Load Hit Rate\t : " << res.read_hit_rate
+						<< std::endl;
+			output_file << "Write Hit Rate\t : " << res.write_hit_rate
+						<< std::endl;
+			output_file << "Total Run Time\t : " << res.run_time << std::endl;
+			output_file << "Average Memory Access Latency\t : "
+						<< res.average_memory_access_time << std::endl;
 		}
 	}
 }
 
 void CreateOutputImages(
-	std::map<std::string, std::map<std::string, Results>> &results_map, std::string &output_folder)
+	std::map<std::string, std::map<std::string, Results>> &results_map,
+	std::string &output_folder)
 {
 	// Table name, yaxis label, result value
-	std::vector<std::pair<std::vector<std::string>, std::function<double(Results & r)>>> tables;
+	std::vector<
+		std::pair<std::vector<std::string>, std::function<double(Results & r)>>>
+		tables;
 
 	tables.emplace_back(
-		std::vector<std::string>{"Average Memory Access Time", "Memory Access Time (clock cycles)"},
+		std::vector<std::string>{"Average Memory Access Time",
+								 "Memory Access Time (clock cycles)"},
 		[](Results &r) { return r.average_memory_access_time; });
-	tables.emplace_back(std::vector<std::string>{"Total Hit Rate", "Total Hit Rate"},
-						[](Results &r) { return r.total_hit_rate; });
+	tables.emplace_back(
+		std::vector<std::string>{"Total Hit Rate", "Total Hit Rate"},
+		[](Results &r) { return r.total_hit_rate; });
 
 	for (auto &table : tables)
 	{
@@ -184,9 +200,10 @@ void CreateOutputImages(
 		{
 			matplot::nexttile();
 
-			auto cache_res_v =
-				stack_res.second | std::views::values | std::views::transform(table.second);
-			matplot::bar(std::vector<double>{cache_res_v.begin(), cache_res_v.end()});
+			auto cache_res_v = stack_res.second | std::views::values |
+							   std::views::transform(table.second);
+			matplot::bar(
+				std::vector<double>{cache_res_v.begin(), cache_res_v.end()});
 
 			auto cache_names = std::views::keys(stack_res.second);
 			matplot::xticklabels({cache_names.begin(), cache_names.end()});
@@ -197,7 +214,6 @@ void CreateOutputImages(
 
 		matplot::sgtitle(table.first[0]);
 
-		matplot::show();
-		// matplot::save(output_folder + "/" + table.first[0], "svg");
+		matplot::save(output_folder + "/" + table.first[0], "svg");
 	}
 }

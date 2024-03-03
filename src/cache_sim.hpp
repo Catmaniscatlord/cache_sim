@@ -132,17 +132,19 @@ struct CacheIndex
 {
 	// These could be made faster if they pointed to where the cache
 	// blocks were in the block map. Either way its O(1)
-	using ReplaceList =
-		std::conditional_t<is_lru, std::list<cache_block_t>, std::vector<cache_block_t>>;
+	using ReplaceList = std::conditional_t<is_lru,
+										   std::list<cache_block_t>,
+										   std::vector<cache_block_t>>;
 
 	// If LRU, the list is an LRU list of the blocks.
 	// If random, the list is a vector that can be randomly accessed
 	// that points to a location in the cache
 	ReplaceList list;
 
-	using BlockMap = std::conditional_t<is_lru,
-										std::unordered_map<cache_block_t, decltype(list.begin())>,
-										std::unordered_set<cache_block_t>>;
+	using BlockMap = std::conditional_t<
+		is_lru,
+		std::unordered_map<cache_block_t, decltype(list.begin())>,
+		std::unordered_set<cache_block_t>>;
 
 	BlockMap map;
 
@@ -152,7 +154,8 @@ struct CacheIndex
 	{
 		map.reserve(cache_set_size_);
 
-		if constexpr (not is_lru) list.reserve(cache_set_size_);
+		if constexpr (not is_lru)
+			list.reserve(cache_set_size_);
 	};
 
 	void clear()
@@ -182,10 +185,13 @@ public:
 		block_size_ = cc.block_size;
 		is_write_allocate_ = cc.write_allocate;
 		cache_set_size_ = (cc.cache_size / cc.associativity) / cc.block_size;
-		offset_size_ = static_cast<uint_fast8_t>(std::bit_width(cc.block_size) - 1);
-		index_size_ = static_cast<uint_fast8_t>(std::bit_width(cc.associativity) - 1);
+		offset_size_ =
+			static_cast<uint_fast8_t>(std::bit_width(cc.block_size) - 1);
+		index_size_ =
+			static_cast<uint_fast8_t>(std::bit_width(cc.associativity) - 1);
 
-		tag_size_ = static_cast<uint_fast8_t>(8 * sizeof(address_t) - offset_size_ - index_size_);
+		tag_size_ = static_cast<uint_fast8_t>(
+			8 * sizeof(address_t) - offset_size_ - index_size_);
 
 		cache_.reserve(associativity_);
 		for (int i = 0; i < associativity_; i++)
@@ -298,7 +304,8 @@ class CacheSim
 public:
 	CacheSim() : stack_trace_ref_(&stack_trace_){};
 
-	CacheSim(CacheConf cache_conf) : cache_conf_(cache_conf), stack_trace_ref_(&stack_trace_)
+	CacheSim(CacheConf cache_conf)
+		: cache_conf_(cache_conf), stack_trace_ref_(&stack_trace_)
 	{
 		set_cache_config(cache_conf);
 	}

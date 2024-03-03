@@ -57,11 +57,15 @@ void CacheSim::RunSimulation()
 		}
 	}
 
-	results_.total_hit_rate = 1.0f - static_cast<double>(rm + wm) / static_cast<double>(tc);
-	results_.read_hit_rate = 1.0f - static_cast<double>(rm) / static_cast<double>(rc);
-	results_.write_hit_rate = 1.0f - static_cast<double>(wm) / static_cast<double>(wc);
+	results_.total_hit_rate =
+		1.0f - static_cast<double>(rm + wm) / static_cast<double>(tc);
+	results_.read_hit_rate =
+		1.0f - static_cast<double>(rm) / static_cast<double>(rc);
+	results_.write_hit_rate =
+		1.0f - static_cast<double>(wm) / static_cast<double>(wc);
 	results_.run_time = rt;
-	results_.average_memory_access_time = static_cast<double>(at) / static_cast<double>(tc);
+	results_.average_memory_access_time =
+		static_cast<double>(at) / static_cast<double>(tc);
 }
 
 // Least Recently Used
@@ -71,8 +75,8 @@ requires is_lru
 {
 	bool hit = true;
 
-	const uint_fast8_t index =
-		static_cast<uint_fast8_t>((address >> offset_size_) & ((1 << index_size_) - 1));
+	const uint_fast8_t index = static_cast<uint_fast8_t>(
+		(address >> offset_size_) & ((1 << index_size_) - 1));
 
 	cache_block_t block_id{address, is_read, tag_size_};
 
@@ -82,7 +86,8 @@ requires is_lru
 		hit = false;
 		// if we have a miss a write with a no-write allocate cache
 		// then we reuturn here without adding the block to the cache
-		if (!is_read && !is_write_allocate_) return hit;
+		if (!is_read && !is_write_allocate_)
+			return hit;
 
 		// list is full
 		if (cache_[index].list.size() == cache_set_size_)
@@ -97,7 +102,8 @@ requires is_lru
 		cache_[index].list.erase(cache_[index].map[block_id]);
 
 	cache_[index].list.push_front(block_id);
-	cache_[index].map.insert_or_assign(std::move(block_id), cache_[index].list.begin());
+	cache_[index].map.insert_or_assign(
+		std::move(block_id), cache_[index].list.begin());
 
 	return hit;
 };
@@ -108,8 +114,8 @@ bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
 requires (not is_lru)
 {
 	bool hit = true;
-	const uint_fast8_t index =
-		static_cast<uint_fast8_t>((address >> offset_size_) & ((1 << index_size_) - 1));
+	const uint_fast8_t index = static_cast<uint_fast8_t>(
+		(address >> offset_size_) & ((1 << index_size_) - 1));
 
 	cache_block_t block_id{address, is_read, tag_size_};
 
@@ -119,12 +125,14 @@ requires (not is_lru)
 		hit = false;
 		// if we have a miss a write with a no-write allocate cache
 		// then we reuturn here without adding the block to the cache
-		if (!is_read && !is_write_allocate_) return hit;
+		if (!is_read && !is_write_allocate_)
+			return hit;
 
 		// list is full
 		if (cache_[index].list.size() == cache_set_size_)
 		{
-			std::uniform_int_distribution<std::size_t> dist(0, cache_[index].list.size() - 1);
+			std::uniform_int_distribution<std::size_t> dist(
+				0, cache_[index].list.size() - 1);
 			// get random index in the array
 			auto i = dist(kGen);
 

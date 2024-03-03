@@ -29,7 +29,8 @@ std::optional<CacheConf> ReadCacheConfFile(const std::string &s)
 {
 	CacheConf conf{};
 	std::ifstream file(s, std::ios_base::in);
-	if (!file) return {};
+	if (!file)
+		return {};
 
 	unsigned int tmp;
 	file >> tmp;
@@ -54,7 +55,8 @@ std::optional<CacheConf> ReadCacheConfFile(std::string &&s)
 {
 	CacheConf conf{};
 	std::ifstream file(s, std::ios_base::in);
-	if (!file) return {};
+	if (!file)
+		return {};
 
 	unsigned int tmp;
 	file >> tmp;
@@ -79,7 +81,8 @@ std::optional<StackTrace> ReadStackTraceFile(const std::string &s)
 {
 	StackTrace st;
 	std::ifstream file(s, std::ios_base::in);
-	if (!file) return {};
+	if (!file)
+		return {};
 
 	char is_read;
 	std::string address;
@@ -92,8 +95,10 @@ std::optional<StackTrace> ReadStackTraceFile(const std::string &s)
 		else
 			ma.is_read = false;
 
-		ma.address = static_cast<address_t>(std::stoul(address.substr(2), 0, 16));
-		ma.last_memory_access_count = static_cast<uint_fast8_t>(last_memory_access_count);
+		ma.address =
+			static_cast<address_t>(std::stoul(address.substr(2), 0, 16));
+		ma.last_memory_access_count =
+			static_cast<uint_fast8_t>(last_memory_access_count);
 
 		st.push_back(std::move(ma));
 	}
@@ -105,7 +110,8 @@ std::optional<StackTrace> ReadStackTraceFile(std::string &&s)
 {
 	StackTrace st;
 	std::ifstream file(s, std::ios_base::in);
-	if (!file) return {};
+	if (!file)
+		return {};
 
 	char is_read;
 	std::string address;
@@ -118,8 +124,10 @@ std::optional<StackTrace> ReadStackTraceFile(std::string &&s)
 		else
 			ma.is_read = false;
 
-		ma.address = static_cast<address_t>(std::stoul(address.substr(2), 0, 16));
-		ma.last_memory_access_count = static_cast<uint_fast8_t>(last_memory_access_count);
+		ma.address =
+			static_cast<address_t>(std::stoul(address.substr(2), 0, 16));
+		ma.last_memory_access_count =
+			static_cast<uint_fast8_t>(last_memory_access_count);
 
 		st.push_back(std::move(ma));
 	}
