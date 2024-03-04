@@ -58,6 +58,10 @@ int main(int argc, char **argv)
 	// [Stack trace][Cache config] results
 	std::map<std::string, std::map<std::string, Results>> results_map;
 
+	/************************
+	 * Command line options *
+	 ************************/
+
 	// clang-format off
 	po::options_description desc{"Options"};
 	desc.add_options()("help,h", "Help prompt")
@@ -115,13 +119,19 @@ int main(int argc, char **argv)
 	if (!std::filesystem::exists(output_folder))
 		std::filesystem::create_directory(output_folder);
 
+	/*********************************
+	 * Running The Cache Simulations *
+	 *********************************/
 	// Create the cache sims
 	for (auto &cc : cc_arr)
 		cs_arr.emplace_back(CacheSim(cc.first), cc.second);
 
+	// multithreading go brrt
 	std::vector<std::jthread> sim_threads;
 	for (auto &cs : cs_arr)
 	{
+		// we don't edit the stack trace so we wont have concurrency issues
+		// if we multithread by cache
 		sim_threads.push_back(std::jthread(
 			[&]()
 			{
@@ -135,9 +145,13 @@ int main(int argc, char **argv)
 			}));
 	}
 
+	// join up our simulation threads
 	for (auto &i : sim_threads)
 		i.join();
 
+	/******************
+	 * Output Results *
+	 ******************/
 	CreateOutputFiles(results_map, output_folder);
 	CreateOutputImages(results_map, output_folder);
 }
@@ -174,46 +188,53 @@ void CreateOutputImages(
 	std::map<std::string, std::map<std::string, Results>> &results_map,
 	std::string &output_folder)
 {
-	// Table name, yaxis label, result value
+	using namespace matplot;
+	// Table name, y-axis label, result value
 	std::vector<
 		std::pair<std::vector<std::string>, std::function<double(Results & r)>>>
 		tables;
 
+	// average memory access time
 	tables.emplace_back(
 		std::vector<std::string>{"Average Memory Access Time",
 								 "Memory Access Time (clock cycles)"},
 		[](Results &r) { return r.average_memory_access_time; });
+
+	// total hit rate
 	tables.emplace_back(
 		std::vector<std::string>{"Total Hit Rate", "Total Hit Rate"},
 		[](Results &r) { return r.total_hit_rate; });
 
+	// creates the table for each output type listed in the tables vector
 	for (auto &table : tables)
 	{
-		matplot::vector_2d y;
-
-		auto f = matplot::figure(true);
+		// create a big enough figure so that the graphs dont overlap
+		auto f = figure(true);
 		f->size(1500, 1000);
 
-		matplot::tiledlayout(2, 3);
+		// hardcoded for 6 or less stacck traces
+		tiledlayout(2, 3);
 
 		for (auto &stack_res : results_map)
 		{
-			matplot::nexttile();
+			nexttile();
 
 			auto cache_res_v = stack_res.second | std::views::values |
 							   std::views::transform(table.second);
-			matplot::bar(
-				std::vector<double>{cache_res_v.begin(), cache_res_v.end()});
+			bar(std::vector<double>{cache_res_v.begin(), cache_res_v.end()});
 
 			auto cache_names = std::views::keys(stack_res.second);
-			matplot::xticklabels({cache_names.begin(), cache_names.end()});
-			matplot::xtickangle(45.0);
-			matplot::ylabel(table.first[1]);
-			matplot::title(stack_res.first);
+			xticklabels({cache_names.begin(), cache_names.end()});
+			xtickangle(45.0);
+			ylabel(table.first[1]);
+			title(stack_res.first);
 		}
 
-		matplot::sgtitle(table.first[0]);
+		sgtitle(table.first[0]);
 
-		matplot::save(output_folder + "/" + table.first[0], "svg");
+		// we are saving the result as an svg because it looks fine
+		// there is a latex output option but it throws errors and I cant be
+		// fucked to fix it
+		save(output_folder + "/" + table.first[0], "svg");
 	}
 }

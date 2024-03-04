@@ -102,6 +102,7 @@ requires is_lru
 		cache_[index].list.erase(cache_[index].map[block_id]);
 
 	cache_[index].list.push_front(block_id);
+	// or assign is necessary here, without it you will get strange crashes
 	cache_[index].map.insert_or_assign(
 		std::move(block_id), cache_[index].list.begin());
 

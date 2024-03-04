@@ -88,9 +88,8 @@ typedef std::vector<MemoryAccess> StackTrace;
 struct cache_block_t
 {
 	address_t block_address_;
-	// the dirty bit and its functionality is useless
-	// unless he gives some clock times for write-through
-	// and write-back
+	// the dirty bit and its functionality is useless unless he gives some clock
+	// times for write-through and write-back
 	bool dirty_;
 	uint_fast8_t tag_size_;
 
@@ -117,9 +116,9 @@ struct std::hash<cache_block_t>
 };
 
 /**
- * @breif Used to contain all the blocks within a single index.
- * There are as many of these in the cache as the level of associativity
- * @description
+ * @brief one associative container of the cache
+ * @description Used to contain all the blocks within a single index. There are
+ *as many of these in the cache as the level of associativity
  * @ is_lru = true
  * @ map is a hashmap maping blocks to a location in the LRU list
  * @ list is a LRU list of the blocks
@@ -130,15 +129,15 @@ struct std::hash<cache_block_t>
 template <bool is_lru>
 struct CacheIndex
 {
-	// These could be made faster if they pointed to where the cache
-	// blocks were in the block map. Either way its O(1)
+	// These could be made faster if they pointed to where the cache blocks were
+	// in the block map. Either way its O(1)
 	using ReplaceList = std::conditional_t<is_lru,
 										   std::list<cache_block_t>,
 										   std::vector<cache_block_t>>;
 
-	// If LRU, the list is an LRU list of the blocks.
-	// If random, the list is a vector that can be randomly accessed
-	// that points to a location in the cache
+	// If LRU, the list is an LRU list of the blocks. If random, the list is a
+	// vector that can be randomly accessed that points to a location in the
+	// cache
 	ReplaceList list;
 
 	using BlockMap = std::conditional_t<
@@ -158,6 +157,7 @@ struct CacheIndex
 			list.reserve(cache_set_size_);
 	};
 
+	// clear the maps and lists, effectively flushes the cache
 	void clear()
 	{
 		map.clear();
@@ -166,16 +166,17 @@ struct CacheIndex
 };
 
 /**
- * @breif this is the cache object that we can simulate memory access with.
- * If the cache uses LRU, the data for the cache has a different structure than
- * for random access. Hence the wrapper.
+ * @brief A cache that we can "store" memory in
+ * @description this is the cache object that we can simulate memory access
+ *with. If the cache uses LRU, the data for the cache has a different structure
+ *than for random access. Hence the wrapper.
  **/
 template <bool is_lru>
 class Cache
 {
 public:
-	// we have a defined constructor so we must
-	// explicitly set a default for move semantics
+	// we have a defined constructor so we must explicitly set a default for
+	// move semantics
 	Cache() = default;
 
 	Cache(CacheConf cc)
@@ -189,7 +190,6 @@ public:
 			static_cast<uint_fast8_t>(std::bit_width(cc.block_size) - 1);
 		index_size_ =
 			static_cast<uint_fast8_t>(std::bit_width(cc.associativity) - 1);
-
 		tag_size_ = static_cast<uint_fast8_t>(
 			8 * sizeof(address_t) - offset_size_ - index_size_);
 
@@ -200,14 +200,15 @@ public:
 
 	/**
 	 * @brief returns true on hit, false on miss
-	 * Two different instantiations for when
-	 * the cacche uses random vs LRU for replaccement
+	 * @description Two different instantiations for when
+	 * the cache uses random vs LRU for replaccement
 	 **/
 	bool AccessMemory(address_t address, bool read)
 	requires is_lru;
 	bool AccessMemory(address_t address, bool read)
 	requires (not is_lru);
 
+	// flush the cache by clearing each cache index
 	void ClearCache()
 	{
 		for (auto &ci : cache_)
@@ -215,6 +216,7 @@ public:
 	}
 
 private:
+	// used for random removal in a random replacement_policy cache
 	static std::mt19937 kGen;
 
 	address_t cache_size_;
@@ -235,7 +237,8 @@ private:
 };
 
 /**
- * @brief Wraps the two different types of cache so
+ * @brief wraps the cache
+ * @description Wraps the two different types of cache so
  * we can access the cache as if it was a single type.
  **/
 class CacheWrapper
@@ -252,6 +255,9 @@ public:
 			return random_cache_.AccessMemory(address, read);
 	}
 
+	/**
+	 * @brief clears the cache
+	 **/
 	auto ClearCache()
 	{
 		if (is_lru_)
@@ -299,6 +305,10 @@ private:
 	Cache<true> lru_cache_;
 };
 
+/**
+ * @brief cache simulator
+ * @ make sure to clear the cache after s simulation for accurate results
+ **/
 class CacheSim
 {
 public:
@@ -318,9 +328,8 @@ public:
 	};
 
 	/**
-	 * @brief Run the simulation for the current stack trace
-	 * and cache config. Stores the results in results_.
-	 *
+	 * @brief Run the simulation for the current stack trace and cache config.
+	 *Stores the results in results_.
 	 **/
 	void RunSimulation();
 
@@ -361,6 +370,9 @@ public:
 		}
 	};
 
+	/**
+	 * @brief clears the cache
+	 **/
 	void ClearCache()
 	{
 		cache_wrapper_.ClearCache();
