@@ -16,6 +16,7 @@
 
 #include <matplot/matplot.h>
 
+#include <algorithm>
 #include <boost/program_options.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
@@ -189,6 +190,7 @@ void CreateOutputImages(
 	std::string &output_folder)
 {
 	using namespace matplot;
+
 	// Table name, y-axis label, result value
 	std::vector<
 		std::pair<std::vector<std::string>, std::function<double(Results & r)>>>
@@ -196,45 +198,57 @@ void CreateOutputImages(
 
 	// average memory access time
 	tables.emplace_back(
-		std::vector<std::string>{"Average Memory Access Time",
+		std::vector<std::string>{"Average-Memory-Access-Time",
 								 "Memory Access Time (clock cycles)"},
 		[](Results &r) { return r.average_memory_access_time; });
 
 	// total hit rate
 	tables.emplace_back(
-		std::vector<std::string>{"Total Hit Rate", "Total Hit Rate"},
+		std::vector<std::string>{"Total-Hit-Rate", "Total Hit Rate"},
 		[](Results &r) { return r.total_hit_rate; });
 
 	// creates the table for each output type listed in the tables vector
 	for (auto &table : tables)
 	{
-		// create a big enough figure so that the graphs dont overlap
-		auto f = figure(true);
-		f->size(1500, 1000);
-
-		// hardcoded for 6 or less stacck traces
-		tiledlayout(2, 3);
-
 		for (auto &stack_res : results_map)
 		{
-			nexttile();
+			auto f = figure();
+			f->quiet_mode(true);
 
 			auto cache_res_v = stack_res.second | std::views::values |
 							   std::views::transform(table.second);
-			bar(std::vector<double>{cache_res_v.begin(), cache_res_v.end()});
 
-			auto cache_names = std::views::keys(stack_res.second);
+			vector_1d y =
+				std::vector<double>{cache_res_v.begin(), cache_res_v.end()};
+			auto b = bar(y);
+
+			std::vector<double> label_x;
+			std::vector<double> label_y;
+			std::vector<std::string> labels;
+			double max = *std::max_element(y.begin(), y.end());
+			for (size_t i = 0; i < y.size(); ++i)
+			{
+				label_x.emplace_back(b->x_end_point(i, 0) * 1.21 - 0.35);
+				label_y.emplace_back(y[i] + (max * .05));
+				std::stringstream ss;
+				ss << std::setprecision(2) << y[i];
+				labels.emplace_back(std::move(ss.str()));
+			}
+			hold(on);
+			text(label_x, label_y, labels)->font("Times New Roman");
+
+			auto cache_names =
+				std::views::keys(stack_res.second) |
+				std::views::transform(
+					[](std::string s) {
+						return s.erase(s.find_last_of("."), std::string::npos);
+					});
 			xticklabels({cache_names.begin(), cache_names.end()});
-			xtickangle(45.0);
+			xtickangle(24.0);
 			ylabel(table.first[1]);
 			title(stack_res.first);
+			save(output_folder + table.first[0] + "-" + stack_res.first +
+				 ".jpg");
 		}
-
-		sgtitle(table.first[0]);
-
-		// we are saving the result as an svg because it looks fine
-		// there is a latex output option but it throws errors and I cant be
-		// fucked to fix it
-		save(output_folder + "/" + table.first[0], "svg");
 	}
 }

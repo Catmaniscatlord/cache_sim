@@ -33,16 +33,14 @@ FetchContent_Declare(
   URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
       USES_TERMINAL_DOWNLOAD
       TRUE
-  DOWNLOAD_NO_EXTRACT FALSE
-  DOWNLOAD_EXTRACT_TIMESTAMP NEW)
+  DOWNLOAD_NO_EXTRACT FALSE)
 
 FetchContent_Declare(
   matplotplusplus
   URL https://github.com/alandefreitas/matplotplusplus/archive/refs/tags/v1.2.1.tar.gz
       USES_TERMINAL_DOWNLOAD
       TRUE
-  DOWNLOAD_NO_EXTRACT FALSE
-  DOWNLOAD_EXTRACT_TIMESTAMP NEW)
+  DOWNLOAD_NO_EXTRACT FALSE)
 FetchContent_MakeAvailable(Boost matplotplusplus)
 
 # ##############################################################################
@@ -53,4 +51,4 @@ FetchContent_MakeAvailable(Boost matplotplusplus)
 # include with our strick compiler settings.
 
 # Enforce a strict compiler over the whole project
-add_compile_options(-Werror -Wall -Wextra -Wconversion)
+add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic)
