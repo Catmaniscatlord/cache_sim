@@ -34,7 +34,7 @@ using address_t = uint32_t;
 
 struct CacheConf
 {
-	uint_fast8_t block_size;
+	uint_fast8_t line_size;
 	uint_fast8_t associativity;
 	uint_fast8_t miss_penalty;
 	address_t cache_size;
@@ -123,35 +123,29 @@ struct CacheIndex
 	{
 		using is_transparent = void;
 
-		const uint_fast8_t tag_size;
+		const uint_fast8_t tag_shift;
 
 		bool
 		operator()(const typename ReplaceList::iterator &lhs,
 				   const typename ReplaceList::iterator &rhs) const noexcept
 		{
-			return (lhs->block_address_ >>
-					((8 * sizeof(address_t)) - tag_size)) ==
-				   (rhs->block_address_ >>
-					((8 * sizeof(address_t)) - tag_size));
+			return (lhs->block_address_ >> tag_shift) ==
+				   (rhs->block_address_ >> tag_shift);
 		}
 
 		bool
 		operator()(const cache_block_t &lhs,
 				   const typename ReplaceList::iterator &rhs) const noexcept
 		{
-			return (lhs.block_address_ >>
-					((8 * sizeof(address_t)) - tag_size)) ==
-				   (rhs->block_address_ >>
-					((8 * sizeof(address_t)) - tag_size));
+			return (lhs.block_address_ >> tag_shift) ==
+				   (rhs->block_address_ >> tag_shift);
 		}
 
 		bool operator()(const typename ReplaceList::iterator &lhs,
 						const cache_block_t &rhs) const noexcept
 		{
-			return (rhs.block_address_ >>
-					((8 * sizeof(address_t)) - tag_size)) ==
-				   (lhs->block_address_ >>
-					((8 * sizeof(address_t)) - tag_size));
+			return (rhs.block_address_ >> tag_shift) ==
+				   (lhs->block_address_ >> tag_shift);
 		}
 	};
 
@@ -161,18 +155,17 @@ struct CacheIndex
 	{
 		using is_transparent = void;
 
-		const uint_fast8_t tag_size;
+		const uint_fast8_t tag_shift;
 
 		std::size_t operator()(const cache_block_t &cb) const noexcept
 		{
-			return (cb.block_address_ >> ((8 * sizeof(address_t)) - tag_size));
+			return (cb.block_address_ >> tag_shift);
 		}
 
 		std::size_t
 		operator()(const typename ReplaceList::iterator &cbp) const noexcept
 		{
-			return (
-				cbp->block_address_ >> ((8 * sizeof(address_t)) - tag_size));
+			return (cbp->block_address_ >> tag_shift);
 		}
 	};
 
@@ -186,16 +179,18 @@ struct CacheIndex
 
 	BlockMap map;
 
-	address_t cache_set_size_;
+	uint_fast8_t associativity_;
 
-	CacheIndex(address_t cache_set_size, uint_fast8_t tag_size)
-		: cache_set_size_(cache_set_size),
-		  map(static_cast<size_t>(cache_set_size),
-			  HashBlock{tag_size},
-			  CompareBlock{tag_size})
+	CacheIndex(uint_fast8_t associativity, uint_fast8_t tag_size)
+		: associativity_(associativity),
+		  map(static_cast<size_t>(associativity),
+			  HashBlock{
+				  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)},
+			  CompareBlock{
+				  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)})
 	{
 		if constexpr (not is_lru)
-			list.reserve(cache_set_size_);
+			list.reserve(associativity_);
 	};
 
 	// clear the maps and lists, effectively flushes the cache
@@ -216,27 +211,36 @@ template <bool is_lru>
 class Cache
 {
 public:
-	// we have a defined constructor so we must explicitly set a default for
-	// move semantics
-	Cache() = default;
+	Cache()
+		: cache_size_(),
+		  associativity_(),
+		  line_size_(),
+		  is_write_allocate_(),
+		  num_indicies_(),
+		  offset_size_(),
+		  index_size_(),
+		  tag_size_(){};
 
 	Cache(CacheConf cc)
+		: cache_size_(cc.cache_size),
+		  associativity_(cc.associativity),
+		  line_size_(cc.line_size),
+		  is_write_allocate_(cc.write_allocate),
+		  // if the associativity is 0, then the cache is fully associative,
+		  // there is only 1 index
+		  num_indicies_(cc.associativity
+							? cc.cache_size / (cc.associativity * cc.line_size)
+							: 1),
+		  offset_size_(
+			  static_cast<uint_fast8_t>(std::bit_width(cc.line_size) - 1)),
+		  index_size_(
+			  static_cast<uint_fast8_t>(std::bit_width(num_indicies_) - 1)),
+		  tag_size_(static_cast<uint_fast8_t>(
+			  8 * sizeof(address_t) - offset_size_ - index_size_))
 	{
-		cache_size_ = cc.cache_size;
-		associativity_ = cc.associativity;
-		block_size_ = cc.block_size;
-		is_write_allocate_ = cc.write_allocate;
-		cache_set_size_ = (cc.cache_size / cc.associativity) / cc.block_size;
-		offset_size_ =
-			static_cast<uint_fast8_t>(std::bit_width(cc.block_size) - 1);
-		index_size_ =
-			static_cast<uint_fast8_t>(std::bit_width(cc.associativity) - 1);
-		tag_size_ = static_cast<uint_fast8_t>(
-			8 * sizeof(address_t) - offset_size_ - index_size_);
-
-		cache_.reserve(associativity_);
-		for (int i = 0; i < associativity_; i++)
-			cache_.emplace_back(CacheIndex<is_lru>(cache_set_size_, tag_size_));
+		cache_.reserve(num_indicies_);
+		for (int i = 0; i < num_indicies_; i++)
+			cache_.emplace_back(CacheIndex<is_lru>(associativity_, tag_size_));
 	};
 
 	/**
@@ -244,9 +248,9 @@ public:
 	 * @description Two different instantiations for when
 	 * the cache uses random vs LRU for replaccement
 	 **/
-	bool AccessMemory(address_t address, bool read)
+	bool AccessMemory(const address_t &address, const bool &read)
 	requires is_lru;
-	bool AccessMemory(address_t address, bool read)
+	bool AccessMemory(const address_t &address, const bool &read)
 	requires (not is_lru);
 
 	// flush the cache by clearing each cache index
@@ -260,21 +264,20 @@ private:
 	// used for random removal in a random replacement_policy cache
 	static std::mt19937 kGen;
 
-	address_t cache_size_;
-	uint_fast8_t associativity_;
-	uint_fast8_t block_size_;
-	address_t cache_set_size_;
-	uint_fast8_t offset_size_;
-	uint_fast8_t index_size_;
-	uint_fast8_t tag_size_;
-
-	std::vector<CacheIndex<is_lru>> cache_;
-
+	const address_t cache_size_;
+	const uint_fast8_t associativity_;
+	const uint_fast8_t line_size_;
+	const address_t num_indicies_;
+	const uint_fast8_t offset_size_;
+	const uint_fast8_t index_size_;
+	const uint_fast8_t tag_size_;
 	/**
 	 * false : no-write allocate, write-through
 	 * true : write-allocate, write-back
 	 */
-	bool is_write_allocate_;
+	const bool is_write_allocate_;
+
+	std::vector<CacheIndex<is_lru>> cache_;
 };
 
 /**
@@ -285,10 +288,28 @@ private:
 class CacheWrapper
 {
 public:
+	static CacheWrapper getWrapper(const CacheConf &cc)
+	{
+		if (cc.replacement_policy)
+			return {Cache<true>{cc}};
+		else
+			return {Cache<false>{cc}};
+	}
+
+	template <bool is_lru>
+	requires is_lru
+	CacheWrapper(const Cache<is_lru> &cache)
+		: is_lru_(is_lru), lru_cache_(cache), random_cache_(){};
+
+	template <bool is_lru>
+	requires (not is_lru)
+	CacheWrapper(const Cache<is_lru> &cache)
+		: is_lru_(is_lru), lru_cache_(), random_cache_(cache){};
+
 	/**
 	 * @brief returns true on hit, false on miss
 	 **/
-	auto AccessMemory(address_t address, bool read)
+	auto AccessMemory(const address_t &address, const bool &read)
 	{
 		if (is_lru_)
 			return lru_cache_.AccessMemory(address, read);
@@ -307,39 +328,6 @@ public:
 			return random_cache_.ClearCache();
 	}
 
-	// Move semantics :)
-	template <bool is_lru>
-	requires is_lru
-	void set_cache(const Cache<is_lru> &cache)
-	{
-		is_lru_ = is_lru;
-		lru_cache_ = cache;
-	};
-
-	template <bool is_lru>
-	requires (not is_lru)
-	void set_cache(const Cache<is_lru> &cache)
-	{
-		is_lru_ = is_lru;
-		random_cache_ = cache;
-	};
-
-	template <bool is_lru>
-	requires is_lru
-	void set_cache(Cache<is_lru> &&cache) noexcept
-	{
-		is_lru_ = is_lru;
-		lru_cache_ = std::move(cache);
-	};
-
-	template <bool is_lru>
-	requires (not is_lru)
-	void set_cache(Cache<is_lru> &&cache) noexcept
-	{
-		is_lru_ = is_lru;
-		random_cache_ = std::move(cache);
-	};
-
 private:
 	bool is_lru_;
 	Cache<false> random_cache_;
@@ -350,21 +338,20 @@ private:
  * @brief cache simulator
  * @ make sure to clear the cache after s simulation for accurate results
  **/
-class CacheSim
+class CacheSimulator
 {
 public:
-	CacheSim() : stack_trace_ref_(&stack_trace_){};
-
-	CacheSim(CacheConf cache_conf)
-		: cache_conf_(cache_conf), stack_trace_ref_(&stack_trace_)
-	{
-		set_cache_config(cache_conf);
-	}
+	CacheSimulator(CacheConf cache_conf)
+		: cache_wrapper_(CacheWrapper::getWrapper(cache_conf)),
+		  cache_conf_(cache_conf),
+		  stack_trace_ref_(&stack_trace_)
+	{}
 
 	template <typename Arg>
-	CacheSim(CacheConf cache_conf, Arg &&stack_trace) : cache_conf_(cache_conf)
+	CacheSimulator(CacheConf cache_conf, Arg &&stack_trace)
+		: cache_wrapper_(CacheWrapper::getWrapper(cache_conf)),
+		  cache_conf_(cache_conf)
 	{
-		set_cache_config(cache_conf);
 		set_stack_trace(std::forward<Arg>(stack_trace));
 	};
 
@@ -373,16 +360,6 @@ public:
 	 *Stores the results in results_.
 	 **/
 	void RunSimulation();
-
-	void set_cache_config(CacheConf cache_conf)
-	{
-		cache_conf_ = cache_conf;
-
-		if (cache_conf_.replacement_policy)
-			cache_wrapper_.set_cache(Cache<true>{cache_conf_});
-		else
-			cache_wrapper_.set_cache(Cache<false>{cache_conf_});
-	};
 
 	CacheConf get_cache_config() const
 	{

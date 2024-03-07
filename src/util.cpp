@@ -34,7 +34,7 @@ std::optional<CacheConf> ReadCacheConfFile(const std::string &s)
 
 	unsigned int tmp;
 	file >> tmp;
-	conf.block_size = static_cast<uint_fast8_t>(tmp);
+	conf.line_size = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
 	conf.associativity = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
@@ -60,7 +60,7 @@ std::optional<CacheConf> ReadCacheConfFile(std::string &&s)
 
 	unsigned int tmp;
 	file >> tmp;
-	conf.block_size = static_cast<uint_fast8_t>(tmp);
+	conf.line_size = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
 	conf.associativity = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;

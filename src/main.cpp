@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 	// Cache Configs. <config,name>
 	std::vector<std::pair<CacheConf, std::string>> cc_arr;
 	// Cache Sims
-	std::vector<std::pair<CacheSim, std::string>> cs_arr;
+	std::vector<std::pair<CacheSimulator, std::string>> cs_arr;
 	// [Stack trace][Cache config] results
 	std::map<std::string, std::map<std::string, Results>> results_map;
 
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 	desc.add_options()("help,h", "Help prompt")
 		("stack-trace,s", po::value<std::vector<std::string>>()->multitoken()->composing(), "Stack Trace files")
 		("cache-conf,c", po::value<std::vector<std::string>>()->multitoken()->composing(), "Cache Configuration files")
-		( "output-folder,o", po::value<std::string>(), "Output Folder, defaults to '$CWD/output/'");
+		("output-folder,o", po::value<std::string>(), "Output Folder, defaults to '$CWD/output/'");
 	// clang-format on
 
 	po::variables_map vm;
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 	// joins the futures
 	for (auto &st : st_read_files)
 	{
-		auto read_st = st.first.get();
+		auto read_st{st.first.get()};
 		if (read_st.has_value())
 			st_arr.emplace_back(std::move(read_st.value()),
 								std::filesystem::path(st.second).filename());
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 		for (const std::string &cc_file :
 			 vm["cache-conf"].as<std::vector<std::string>>())
 		{
-			auto cc = Util::ReadCacheConfFile(cc_file);
+			auto cc{Util::ReadCacheConfFile(cc_file)};
 			if (cc.has_value())
 				cc_arr.push_back(
 					{cc.value(), std::filesystem::path(cc_file).filename()});
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 	 *********************************/
 	// Create the cache sims
 	for (auto &cc : cc_arr)
-		cs_arr.emplace_back(CacheSim(cc.first), cc.second);
+		cs_arr.emplace_back(CacheSimulator(cc.first), cc.second);
 
 	// multithreading go brrt
 	std::vector<std::jthread> sim_threads;
@@ -178,13 +178,13 @@ void CreateOutputFiles(
 	{
 		for (auto &cc_res : st_res.second)
 		{
-			std::string output_file_name = output_folder + "/" + st_res.first +
-										   "." + cc_res.first + ".out";
+			std::string output_file_name{output_folder + "/" + st_res.first +
+										 "." + cc_res.first + ".out"};
 			std::ofstream output_file(
 				std::move(output_file_name), std::ios::trunc | std::ios::out);
 			if (!output_file)
 				std::cerr << "error creating output file\n";
-			Results res = cc_res.second;
+			Results res{cc_res.second};
 			output_file << "Total Hit Rate\t : " << res.total_hit_rate
 						<< std::endl;
 			output_file << "Load Hit Rate\t : " << res.read_hit_rate
@@ -228,17 +228,16 @@ void CreateOutputImages(
 			auto f = figure();
 			f->quiet_mode(true);
 
-			auto cache_res_v = stack_res.second | std::views::values |
-							   std::views::transform(table.second);
+			auto cache_res_v{stack_res.second | std::views::values |
+							 std::views::transform(table.second)};
 
-			vector_1d y =
-				std::vector<double>{cache_res_v.begin(), cache_res_v.end()};
-			auto b = bar(y);
+			vector_1d y{cache_res_v.begin(), cache_res_v.end()};
+			auto b{bar(y)};
 
 			std::vector<double> label_x;
 			std::vector<double> label_y;
 			std::vector<std::string> labels;
-			double max = *std::max_element(y.begin(), y.end());
+			double max{*std::max_element(y.begin(), y.end())};
 			for (size_t i = 0; i < y.size(); ++i)
 			{
 				label_x.emplace_back(b->x_end_point(i, 0) * 1.21 - 0.35);
@@ -250,12 +249,12 @@ void CreateOutputImages(
 			hold(on);
 			text(label_x, label_y, labels)->font("Times New Roman");
 
-			auto cache_names =
+			auto cache_names{
 				std::views::keys(stack_res.second) |
 				std::views::transform(
 					[](std::string s) {
 						return s.erase(s.find_last_of("."), std::string::npos);
-					});
+					})};
 			xticklabels({cache_names.begin(), cache_names.end()});
 			xtickangle(24.0);
 			ylabel(table.first[1]);

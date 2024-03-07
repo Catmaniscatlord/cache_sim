@@ -51,4 +51,4 @@ FetchContent_MakeAvailable(Boost matplotplusplus)
 # include with our strick compiler settings.
 
 # Enforce a strict compiler over the whole project
-add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic)
+add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic -O3)

@@ -19,10 +19,10 @@
 #include <cstdint>
 #include <iterator>
 
-void CacheSim::RunSimulation()
+void CacheSimulator::RunSimulation()
 {
 	// memory access count
-	const auto tc = stack_trace_ref_->size();
+	const auto tc{stack_trace_ref_->size()};
 
 	uint64_t rc{};	// read count
 	uint64_t wc{};	// write count
@@ -31,14 +31,15 @@ void CacheSim::RunSimulation()
 	uint64_t rt{};	// run time
 	uint64_t at{};	// access time
 
-	for (auto &ma : *stack_trace_ref_)
+	for (const auto& ma : *stack_trace_ref_)
 	{
 		if (ma.is_read)
 			rc++;
 		else
 			wc++;
-		rt += ma.last_memory_access_count;
+		rt += 1 + ma.last_memory_access_count;
 
+		at++;
 		// if miss
 		if (!cache_wrapper_.AccessMemory(ma.address, ma.is_read))
 		{
@@ -48,12 +49,6 @@ void CacheSim::RunSimulation()
 				rm++;
 			else
 				wm++;
-		}
-		else
-		{
-			// if hit
-			rt++;
-			at++;
 		}
 	}
 
@@ -70,15 +65,15 @@ void CacheSim::RunSimulation()
 
 // Least Recently Used
 template <bool is_lru>
-bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
+bool Cache<is_lru>::AccessMemory(const address_t& address, const bool& is_read)
 requires is_lru
 {
-	bool hit = true;
+	bool hit{true};
 
-	const uint_fast8_t index = static_cast<uint_fast8_t>(
-		(address >> offset_size_) & ((1 << index_size_) - 1));
+	const uint_fast8_t index{static_cast<uint_fast8_t>(
+		(address >> offset_size_) & ((1 << index_size_) - 1))};
 
-	const auto it = cache_[index].map.find(cache_block_t{address, is_read});
+	const auto it{cache_[index].map.find(cache_block_t{address, is_read})};
 
 	// not in cache
 	if (it == cache_[index].map.end())
@@ -91,7 +86,7 @@ requires is_lru
 			return hit;
 
 		// map is full
-		if (cache_[index].list.size() == cache_set_size_)
+		if (cache_[index].map.size() == associativity_)
 		{
 			// remove the element from the back of the list and from the map
 			cache_[index].map.erase(std::prev(cache_[index].list.end()));
@@ -110,12 +105,12 @@ requires is_lru
 
 // random replacement cache
 template <bool is_lru>
-bool Cache<is_lru>::AccessMemory(address_t address, bool is_read)
+bool Cache<is_lru>::AccessMemory(const address_t& address, const bool& is_read)
 requires (not is_lru)
 {
-	bool hit = true;
-	const uint_fast8_t index = static_cast<uint_fast8_t>(
-		(address >> offset_size_) & ((1 << index_size_) - 1));
+	bool hit{true};
+	const uint_fast8_t index{static_cast<uint_fast8_t>(
+		(address >> offset_size_) & ((1 << index_size_) - 1))};
 
 	// not in cache
 	if (!cache_[index].map.contains(cache_block_t{address, is_read}))
@@ -127,18 +122,23 @@ requires (not is_lru)
 			return hit;
 
 		// list is full
-		if (cache_[index].map.size() == cache_set_size_)
+		if (cache_[index].map.size() == associativity_)
 		{
 			std::uniform_int_distribution<std::size_t> dist(
 				0, cache_[index].list.size() - 1);
 
+			const auto i{dist(kGen)};
 			// remove the random block in the cache
-			cache_[index].map.erase(
-				std::next(cache_[index].list.begin(), dist(kGen)));
+			cache_[index].map.erase(std::next(cache_[index].list.begin(), i));
+			cache_[index].list[i] = {address, is_read};
+			cache_[index].map.emplace(std::next(cache_[index].list.begin(), i));
 		}
-		// put the new block into the cache
-		cache_[index].list.emplace_back(address, is_read);
-		cache_[index].map.emplace(std::prev(cache_[index].list.end()));
+		else
+		{
+			// put the new block into the cache
+			cache_[index].list.emplace_back(address, is_read);
+			cache_[index].map.emplace(std::prev(cache_[index].list.end()));
+		}
 	}
 
 	return hit;
