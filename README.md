@@ -1,3 +1,11 @@
+# Requirements
+
+To build and run the cache simulator you will need the following bits of software
+
+- `gcc 11.4.0`
+- `cmake 3.22`
+- `gnuplot` - this is required only to generate the graphs
+
 # Building
 
 In the source directory, create the build directory with
@@ -15,7 +23,8 @@ To install, from the build directory run
 
 # Running
 
-To run the cache simulator, first install the project then run the command
+To run the cache simulator, you must first install the project
+After you have installed the project, in the source directory, run
 `./install/bin/Main -c confs/* -s traces/*`
 By default, this will generate all of the output files into the output folder.
 For help with the options you can run

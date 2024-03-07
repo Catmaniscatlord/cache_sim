@@ -17,7 +17,7 @@
 #include "cache_sim.hpp"
 
 #include <cstdint>
-#include <utility>
+#include <iterator>
 
 void CacheSim::RunSimulation()
 {
@@ -78,33 +78,32 @@ requires is_lru
 	const uint_fast8_t index = static_cast<uint_fast8_t>(
 		(address >> offset_size_) & ((1 << index_size_) - 1));
 
-	cache_block_t block_id{address, is_read, tag_size_};
+	const auto it = cache_[index].map.find(cache_block_t{address, is_read});
 
 	// not in cache
-	if (!cache_[index].map.contains(block_id))
+	if (it == cache_[index].map.end())
 	{
 		hit = false;
-		// if we have a miss a write with a no-write allocate cache
-		// then we reuturn here without adding the block to the cache
+
+		// if we have a miss a write with a no-write allocate cache then we
+		// return here without adding the block to the cache
 		if (!is_read && !is_write_allocate_)
 			return hit;
 
-		// list is full
+		// map is full
 		if (cache_[index].list.size() == cache_set_size_)
 		{
-			// remove the element from the back of the list
-			// from the map
-			cache_[index].map.erase(cache_[index].list.back());
+			// remove the element from the back of the list and from the map
+			cache_[index].map.erase(std::prev(cache_[index].list.end()));
 			cache_[index].list.pop_back();
 		}
+		// add the block address to the map
+		cache_[index].list.emplace_front(address, is_read);
+		cache_[index].map.insert(cache_[index].list.begin());
 	}
 	else
-		cache_[index].list.erase(cache_[index].map[block_id]);
-
-	cache_[index].list.push_front(block_id);
-	// or assign is necessary here, without it you will get strange crashes
-	cache_[index].map.insert_or_assign(
-		std::move(block_id), cache_[index].list.begin());
+		cache_[index].list.splice(
+			cache_[index].list.begin(), cache_[index].list, *it);
 
 	return hit;
 };
@@ -118,37 +117,28 @@ requires (not is_lru)
 	const uint_fast8_t index = static_cast<uint_fast8_t>(
 		(address >> offset_size_) & ((1 << index_size_) - 1));
 
-	cache_block_t block_id{address, is_read, tag_size_};
-
 	// not in cache
-	if (!cache_[index].map.contains(block_id))
+	if (!cache_[index].map.contains(cache_block_t{address, is_read}))
 	{
 		hit = false;
 		// if we have a miss a write with a no-write allocate cache
-		// then we reuturn here without adding the block to the cache
+		// then we return here without adding the block to the cache
 		if (!is_read && !is_write_allocate_)
 			return hit;
 
 		// list is full
-		if (cache_[index].list.size() == cache_set_size_)
+		if (cache_[index].map.size() == cache_set_size_)
 		{
 			std::uniform_int_distribution<std::size_t> dist(
 				0, cache_[index].list.size() - 1);
-			// get random index in the array
-			auto i = dist(kGen);
 
 			// remove the random block in the cache
-			cache_[index].map.erase(cache_[index].list[i]);
-			// replace the deleted block with the new block
-			cache_[index].list[i] = block_id;
-			// put the new block into the cache
-			cache_[index].map.emplace(std::move(block_id));
+			cache_[index].map.erase(
+				std::next(cache_[index].list.begin(), dist(kGen)));
 		}
-		else
-		{
-			cache_[index].list.push_back(block_id);
-			cache_[index].map.emplace(std::move(block_id));
-		}
+		// put the new block into the cache
+		cache_[index].list.emplace_back(address, is_read);
+		cache_[index].map.emplace(std::prev(cache_[index].list.end()));
 	}
 
 	return hit;

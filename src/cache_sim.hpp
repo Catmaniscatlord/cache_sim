@@ -26,7 +26,6 @@
 #include <ostream>
 #include <random>
 #include <type_traits>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -91,28 +90,11 @@ struct cache_block_t
 	// the dirty bit and its functionality is useless unless he gives some clock
 	// times for write-through and write-back
 	bool dirty_;
-	uint_fast8_t tag_size_;
 
 	cache_block_t() = default;
 
-	cache_block_t(address_t address, bool dirty, uint_fast8_t tag_size)
-		: block_address_(address), dirty_(dirty), tag_size_(tag_size){};
-
-	bool operator==(const cache_block_t &other) const noexcept
-	{
-		return (block_address_ >> ((8 * sizeof(address_t)) - tag_size_)) ==
-			   (other.block_address_ >> ((8 * sizeof(address_t)) - tag_size_));
-	}
-};
-
-// Create a specific hash function for a cache block
-template <>
-struct std::hash<cache_block_t>
-{
-	std::size_t operator()(const cache_block_t &cb) const noexcept
-	{
-		return (cb.block_address_ >> ((8 * sizeof(address_t)) - cb.tag_size_));
-	}
+	cache_block_t(address_t address, bool dirty)
+		: block_address_(address), dirty_(dirty){};
 };
 
 /**
@@ -135,24 +117,83 @@ struct CacheIndex
 										   std::list<cache_block_t>,
 										   std::vector<cache_block_t>>;
 
+	// This allows us to compare the stored list iterator, with its underlying
+	// cache block
+	struct CompareBlock
+	{
+		using is_transparent = void;
+
+		const uint_fast8_t tag_size;
+
+		bool
+		operator()(const typename ReplaceList::iterator &lhs,
+				   const typename ReplaceList::iterator &rhs) const noexcept
+		{
+			return (lhs->block_address_ >>
+					((8 * sizeof(address_t)) - tag_size)) ==
+				   (rhs->block_address_ >>
+					((8 * sizeof(address_t)) - tag_size));
+		}
+
+		bool
+		operator()(const cache_block_t &lhs,
+				   const typename ReplaceList::iterator &rhs) const noexcept
+		{
+			return (lhs.block_address_ >>
+					((8 * sizeof(address_t)) - tag_size)) ==
+				   (rhs->block_address_ >>
+					((8 * sizeof(address_t)) - tag_size));
+		}
+
+		bool operator()(const typename ReplaceList::iterator &lhs,
+						const cache_block_t &rhs) const noexcept
+		{
+			return (rhs.block_address_ >>
+					((8 * sizeof(address_t)) - tag_size)) ==
+				   (lhs->block_address_ >>
+					((8 * sizeof(address_t)) - tag_size));
+		}
+	};
+
+	// This allows us to search if a block is in the map by passing just the
+	// block, instead of storing it in a list/vector first
+	struct HashBlock
+	{
+		using is_transparent = void;
+
+		const uint_fast8_t tag_size;
+
+		std::size_t operator()(const cache_block_t &cb) const noexcept
+		{
+			return (cb.block_address_ >> ((8 * sizeof(address_t)) - tag_size));
+		}
+
+		std::size_t
+		operator()(const typename ReplaceList::iterator &cbp) const noexcept
+		{
+			return (
+				cbp->block_address_ >> ((8 * sizeof(address_t)) - tag_size));
+		}
+	};
+
 	// If LRU, the list is an LRU list of the blocks. If random, the list is a
 	// vector that can be randomly accessed that points to a location in the
 	// cache
 	ReplaceList list;
 
-	using BlockMap = std::conditional_t<
-		is_lru,
-		std::unordered_map<cache_block_t, decltype(list.begin())>,
-		std::unordered_set<cache_block_t>>;
+	using BlockMap = std::
+		unordered_set<typename ReplaceList::iterator, HashBlock, CompareBlock>;
 
 	BlockMap map;
 
 	address_t cache_set_size_;
 
-	CacheIndex(address_t cache_set_size) : cache_set_size_(cache_set_size)
+	CacheIndex(address_t cache_set_size, uint_fast8_t tag_size)
+		: cache_set_size_(cache_set_size),
+		  map(static_cast<size_t>(cache_set_size),
+			  HashBlock{tag_size},
+			  CompareBlock{tag_size})
 	{
-		map.reserve(cache_set_size_);
-
 		if constexpr (not is_lru)
 			list.reserve(cache_set_size_);
 	};
@@ -195,7 +236,7 @@ public:
 
 		cache_.reserve(associativity_);
 		for (int i = 0; i < associativity_; i++)
-			cache_.emplace_back(CacheIndex<is_lru>(cache_set_size_));
+			cache_.emplace_back(CacheIndex<is_lru>(cache_set_size_, tag_size_));
 	};
 
 	/**

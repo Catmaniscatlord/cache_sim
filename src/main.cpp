@@ -24,6 +24,7 @@
 #include <boost/program_options/variables_map.hpp>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <map>
 #include <ranges>
@@ -76,21 +77,33 @@ int main(int argc, char **argv)
 
 	po::notify(vm);
 
+	std::vector<std::pair<std::future<std::optional<StackTrace>>, std::string>>
+		st_read_files;
 	if (vm.count("stack-trace"))
 	{
+		// start multithreaded read
 		for (const std::string &st_file :
 			 vm["stack-trace"].as<std::vector<std::string>>())
 		{
-			auto st = Util::ReadStackTraceFile(st_file);
-			if (st.has_value())
-				st_arr.push_back(
-					{st.value(), std::filesystem::path(st_file).filename()});
-			else
-			{
-				std::cerr << "Stack Trace file " << st_file << " not found"
-						  << std::endl;
-				return 1;
-			}
+			st_read_files.emplace_back(
+				std::async(std::launch::async,
+						   [=]() { return Util::ReadStackTraceFile(st_file); }),
+				st_file);
+		}
+	}
+
+	// joins the futures
+	for (auto &st : st_read_files)
+	{
+		auto read_st = st.first.get();
+		if (read_st.has_value())
+			st_arr.emplace_back(std::move(read_st.value()),
+								std::filesystem::path(st.second).filename());
+		else
+		{
+			std::cerr << "Stack Trace file " << st.second << " not found"
+					  << std::endl;
+			return 1;
 		}
 	}
 
@@ -199,7 +212,7 @@ void CreateOutputImages(
 	// average memory access time
 	tables.emplace_back(
 		std::vector<std::string>{"Average-Memory-Access-Time",
-								 "Memory Access Time (clock cycles)"},
+								 "Average Memory Access Time (clock cycles)"},
 		[](Results &r) { return r.average_memory_access_time; });
 
 	// total hit rate
@@ -231,7 +244,7 @@ void CreateOutputImages(
 				label_x.emplace_back(b->x_end_point(i, 0) * 1.21 - 0.35);
 				label_y.emplace_back(y[i] + (max * .05));
 				std::stringstream ss;
-				ss << std::setprecision(2) << y[i];
+				ss << std::setprecision(3) << y[i];
 				labels.emplace_back(std::move(ss.str()));
 			}
 			hold(on);
