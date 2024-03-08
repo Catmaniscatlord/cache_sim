@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <algorithm>
 #include <bit>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include <cstdint>
+#include <deque>
 #include <iostream>
 #include <list>
 #include <ostream>
@@ -31,6 +31,15 @@
 #include <vector>
 
 using address_t = uint32_t;
+
+/**
+ * @param uint_fast8_t line_size
+ * @param uint_fast8_t associativity
+ * @param uint_fast8_t miss_penalty
+ * @param address_t cache_size
+ * @param bool write_allocate
+ * @param bool replacement_policy
+ */
 
 struct CacheConf
 {
@@ -47,7 +56,7 @@ struct CacheConf
 	 * false : random Replacement
 	 * true : FIFO replacement
 	 */
-	bool replacement_policy;
+	bool is_fifo;
 };
 
 struct Results
@@ -101,21 +110,21 @@ struct cache_block_t
  * @brief one associative container of the cache
  * @description Used to contain all the blocks within a single index. There are
  *as many of these in the cache as the level of associativity
- * @ is_lru = true
- * @ map is a hashmap maping blocks to a location in the LRU list
- * @ list is a LRU list of the blocks
- * @ is_lru = false
+ * @ is_fifo = true
+ * @ map is a hashmap maping blocks to a location in the fifo list
+ * @ list is a FIFO list of the blocks
+ * @ is_fifo = false
  * @ map is a set containing the blocks for constant time look up
  * @ list is an array of the blocks, for constant time access
  **/
-template <bool is_lru>
+template <bool is_fifo>
 struct CacheIndex
 {
 	// These could be made faster if they pointed to where the cache blocks were
 	// in the block map. Either way its O(1)
-	using ReplaceList = std::conditional_t<is_lru,
+	using ReplaceList = std::conditional_t<is_fifo,
 										   std::list<cache_block_t>,
-										   std::vector<cache_block_t>>;
+										   std::deque<cache_block_t>>;
 
 	// This allows us to compare the stored list iterator, with its underlying
 	// cache block
@@ -169,7 +178,7 @@ struct CacheIndex
 		}
 	};
 
-	// If LRU, the list is an LRU list of the blocks. If random, the list is a
+	// If fifo, the list is an fifo list of the blocks. If random, the list is a
 	// vector that can be randomly accessed that points to a location in the
 	// cache
 	ReplaceList list;
@@ -186,12 +195,8 @@ struct CacheIndex
 		  map(static_cast<size_t>(associativity),
 			  HashBlock{
 				  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)},
-			  CompareBlock{
-				  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)})
-	{
-		if constexpr (not is_lru)
-			list.reserve(associativity_);
-	};
+			  CompareBlock{static_cast<uint_fast8_t>(
+				  8 * sizeof(address_t) - tag_size)}){};
 
 	// clear the maps and lists, effectively flushes the cache
 	void clear()
@@ -204,10 +209,10 @@ struct CacheIndex
 /**
  * @brief A cache that we can "store" memory in
  * @description this is the cache object that we can simulate memory access
- *with. If the cache uses LRU, the data for the cache has a different structure
+ *with. If the cache uses fifo, the data for the cache has a different structure
  *than for random access. Hence the wrapper.
  **/
-template <bool is_lru>
+template <bool is_fifo>
 class Cache
 {
 public:
@@ -240,18 +245,18 @@ public:
 	{
 		cache_.reserve(num_indicies_);
 		for (int i = 0; i < num_indicies_; i++)
-			cache_.emplace_back(CacheIndex<is_lru>(associativity_, tag_size_));
+			cache_.emplace_back(CacheIndex<is_fifo>(associativity_, tag_size_));
 	};
 
 	/**
 	 * @brief returns true on hit, false on miss
 	 * @description Two different instantiations for when
-	 * the cache uses random vs LRU for replaccement
+	 * the cache uses random vs fifo for replacement
 	 **/
 	bool AccessMemory(const address_t &address, const bool &read)
-	requires is_lru;
+	requires is_fifo;
 	bool AccessMemory(const address_t &address, const bool &read)
-	requires (not is_lru);
+	requires (not is_fifo);
 
 	// flush the cache by clearing each cache index
 	void ClearCache()
@@ -277,7 +282,7 @@ private:
 	 */
 	const bool is_write_allocate_;
 
-	std::vector<CacheIndex<is_lru>> cache_;
+	std::vector<CacheIndex<is_fifo>> cache_;
 };
 
 /**
@@ -290,29 +295,29 @@ class CacheWrapper
 public:
 	static CacheWrapper getWrapper(const CacheConf &cc)
 	{
-		if (cc.replacement_policy)
+		if (cc.is_fifo)
 			return {Cache<true>{cc}};
 		else
 			return {Cache<false>{cc}};
 	}
 
-	template <bool is_lru>
-	requires is_lru
-	CacheWrapper(const Cache<is_lru> &cache)
-		: is_lru_(is_lru), lru_cache_(cache), random_cache_(){};
+	template <bool is_fifo>
+	requires is_fifo
+	CacheWrapper(const Cache<is_fifo> &cache)
+		: is_fifo_(is_fifo), fifo_cache_(cache){};
 
-	template <bool is_lru>
-	requires (not is_lru)
-	CacheWrapper(const Cache<is_lru> &cache)
-		: is_lru_(is_lru), lru_cache_(), random_cache_(cache){};
+	template <bool is_fifo>
+	requires (not is_fifo)
+	CacheWrapper(const Cache<is_fifo> &cache)
+		: is_fifo_(is_fifo), random_cache_(cache){};
 
 	/**
 	 * @brief returns true on hit, false on miss
 	 **/
 	auto AccessMemory(const address_t &address, const bool &read)
 	{
-		if (is_lru_)
-			return lru_cache_.AccessMemory(address, read);
+		if (is_fifo_)
+			return fifo_cache_.AccessMemory(address, read);
 		else
 			return random_cache_.AccessMemory(address, read);
 	}
@@ -322,16 +327,16 @@ public:
 	 **/
 	auto ClearCache()
 	{
-		if (is_lru_)
-			return lru_cache_.ClearCache();
+		if (is_fifo_)
+			return fifo_cache_.ClearCache();
 		else
 			return random_cache_.ClearCache();
 	}
 
 private:
-	bool is_lru_;
+	bool is_fifo_;
 	Cache<false> random_cache_;
-	Cache<true> lru_cache_;
+	Cache<true> fifo_cache_;
 };
 
 /**

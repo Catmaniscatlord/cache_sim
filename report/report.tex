@@ -1,0 +1,71 @@
+\documentclass[12pt]{article}
+%========================
+\usepackage{enumitem}
+\usepackage{array,makecell}
+\usepackage{float}
+
+\usepackage{amsmath,amsfonts,amssymb,txfonts,xcolor,mathrsfs}
+\usepackage[most]{tcolorbox}
+
+
+\graphicspath{{./img/}}
+%=========================================================
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\CC}{\mathbb{C}}
+\newcommand{\QQ}{\mathbb{Q}}
+
+%=========================================================
+\begin{document}
+\title{Lab 2}
+\author{David Chamberlain}
+\date{}
+\maketitle
+\section{Introduction}
+In this lab we create a basic cache simulator to simulate several different characteristics of a chace, (i.e, size, replacement policy, associativity). We test the performance of each cache by running different program traces and logging the relevant statistics.
+
+\section{Method}
+To perform this lab we must create a C/C++ program to simulate a cache. We also must verify that our output is correct.
+
+I have created a sample trace file of around 100 lines that I have used for testing.
+
+As for the cache simulator, I have provided a \verb|README.md| file documenting how to build and run my cache simulator.
+
+\section{Results and Discussion}
+\subsection{Results}
+
+\begin{figure}[H]
+  \centering
+  % \include{img/Average-Memory-Access-Time}
+  \includegraphics[width=0.45\linewidth]{Average-Memory-Access-Time-gcc.trace.jpg}
+  \includegraphics[width=0.45\linewidth]{Average-Memory-Access-Time-mcf.trace.jpg}
+  \hfil
+  \includegraphics[width=0.45\linewidth]{Average-Memory-Access-Time-gzip.trace.jpg}
+  \includegraphics[width=0.45\linewidth]{Average-Memory-Access-Time-swim.trace.jpg}
+  \hfil
+  \includegraphics[width=0.45\linewidth]{Average-Memory-Access-Time-twolf.trace.jpg}
+  \caption{Average Memory Access Time by Trace}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  % \include{img/Average-Memory-Access-Time}
+  \includegraphics[width=0.45\linewidth]{Total-Hit-Rate-gcc.trace.jpg}
+  \includegraphics[width=0.45\linewidth]{Total-Hit-Rate-mcf.trace.jpg}
+  \hfil
+  \includegraphics[width=0.45\linewidth]{Total-Hit-Rate-gzip.trace.jpg}
+  \includegraphics[width=0.45\linewidth]{Total-Hit-Rate-swim.trace.jpg}
+  \hfil
+  \includegraphics[width=0.45\linewidth]{Total-Hit-Rate-twolf.trace.jpg}
+  \caption{Total Hit Rate by Trace}
+\end{figure}
+\subsection{Discussion}
+By far the parameter that had the largest impact on performance was write-allocate. The two configurations, \verb|2way-nwa| and \verb|2way-wa| differed by this single parameter. There was a 2-3 fold increase on 3/5 of the traces with the change of this single parameter.
+
+The next paramter that seemd to have the biggest impact was the the block size and the level of associativity. The \verb|small-dm|, \verb|medium-dm|, and \verb|large-dm| configurations all had increasing cache sizes but maintained the same block size and were all direct mapped. In the other traces, the block size was increased and the level of associativity was at least 2. The config \verb|2way-wa| has a smaller cache than the \verb|large-dm| cache, yet has an either identical, or smaller average memory access time in every single tra
+e.
+\section{Conclusion}
+I learned a lot about how a cache works on a hardware level. Before this lab the "associativity" concept made little sense to me. Now I have a very clear understanding on cache associativity and its effects on performance. 
+
+I also learned a lot of modern C++ features during this lab. In trying to make my cache simulator run as fast aas possible and also be flexible, I learned how to do multithreading in C++, how to use template specialization to customize the cache for both LRU and rand, how to use both boosts program options library and matplotplusplus to create the graphs for my program, and how to use views and ranges withing C++ to perform operations across an entire vector with a single command.
+\end{document}

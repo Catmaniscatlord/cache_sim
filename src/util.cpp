@@ -42,7 +42,7 @@ std::optional<CacheConf> ReadCacheConfFile(const std::string &s)
 	// Kb to bytes
 	conf.cache_size *= 1024;
 	file >> tmp;
-	conf.replacement_policy = tmp;
+	conf.is_fifo = tmp;
 	file >> tmp;
 	conf.miss_penalty = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
@@ -68,7 +68,7 @@ std::optional<CacheConf> ReadCacheConfFile(std::string &&s)
 	// Kb to bytes
 	conf.cache_size *= 1024;
 	file >> tmp;
-	conf.replacement_policy = tmp;
+	conf.is_fifo = tmp;
 	file >> tmp;
 	conf.miss_penalty = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;

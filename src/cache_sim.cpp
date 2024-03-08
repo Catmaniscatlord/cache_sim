@@ -64,9 +64,9 @@ void CacheSimulator::RunSimulation()
 }
 
 // Least Recently Used
-template <bool is_lru>
-bool Cache<is_lru>::AccessMemory(const address_t& address, const bool& is_read)
-requires is_lru
+template <bool is_fifo>
+bool Cache<is_fifo>::AccessMemory(const address_t& address, const bool& is_read)
+requires is_fifo
 {
 	bool hit{true};
 
@@ -96,17 +96,14 @@ requires is_lru
 		cache_[index].list.emplace_front(address, is_read);
 		cache_[index].map.insert(cache_[index].list.begin());
 	}
-	else
-		cache_[index].list.splice(
-			cache_[index].list.begin(), cache_[index].list, *it);
 
 	return hit;
 };
 
 // random replacement cache
-template <bool is_lru>
-bool Cache<is_lru>::AccessMemory(const address_t& address, const bool& is_read)
-requires (not is_lru)
+template <bool is_fifo>
+bool Cache<is_fifo>::AccessMemory(const address_t& address, const bool& is_read)
+requires (not is_fifo)
 {
 	bool hit{true};
 	const uint_fast8_t index{static_cast<uint_fast8_t>(
@@ -144,5 +141,5 @@ requires (not is_lru)
 	return hit;
 };
 
-template <bool is_lru>
-std::mt19937 Cache<is_lru>::kGen(std::random_device{}());
+template <bool is_fifo>
+std::mt19937 Cache<is_fifo>::kGen(std::random_device{}());

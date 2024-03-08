@@ -36,12 +36,17 @@ FetchContent_Declare(
   DOWNLOAD_NO_EXTRACT FALSE)
 
 FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+      USES_TERMINAL_DOWNLOAD TRUE)
+
+FetchContent_Declare(
   matplotplusplus
   URL https://github.com/alandefreitas/matplotplusplus/archive/refs/tags/v1.2.1.tar.gz
       USES_TERMINAL_DOWNLOAD
       TRUE
   DOWNLOAD_NO_EXTRACT FALSE)
-FetchContent_MakeAvailable(Boost matplotplusplus)
+FetchContent_MakeAvailable(Boost googletest matplotplusplus)
 
 # ##############################################################################
 # Project Wide Options #
@@ -51,4 +56,5 @@ FetchContent_MakeAvailable(Boost matplotplusplus)
 # include with our strick compiler settings.
 
 # Enforce a strict compiler over the whole project
-add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic -O3)
+add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic)
+enable_testing()
