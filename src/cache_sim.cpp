@@ -87,13 +87,11 @@ requires is_fifo
 
 		// map is full
 		if (cache_[index].map.size() == associativity_)
-		{
-			// remove the element from the back of the list and from the map
+			// remove the element from the back of the map
 			cache_[index].map.erase(std::prev(cache_[index].list.end()));
-			cache_[index].list.pop_back();
-		}
-		// add the block address to the map
-		cache_[index].list.emplace_front(address, is_read);
+		// add the block address to the map, this overwrites the first element
+		// if full
+		cache_[index].list.push_front({address, is_read});
 		cache_[index].map.insert(cache_[index].list.begin());
 	}
 

@@ -29,7 +29,7 @@ TEST(CacheSimTest, directMapped)
 	// 1 bit per index
 	// 1 bit offset
 	// FIFO
-	CacheWrapper cache{CacheWrapper::getWrapper(cc)};
+	CacheWrapper cache{cc};
 	ASSERT_FALSE(cache.AccessMemory(0b1011, true));	 // first index tag 0001
 													 // Index state : 0b1010
 	ASSERT_TRUE(cache.AccessMemory(0b1010, true));	 // first index tag 0001
@@ -50,7 +50,7 @@ TEST(CacheSimTest, associativity)
 	// 1 bit per index
 	// 1 bit offset
 	// FIFO
-	CacheWrapper cache{CacheWrapper::getWrapper(cc)};
+	CacheWrapper cache{cc};
 	ASSERT_FALSE(cache.AccessMemory(0b111, true));	// first index tag 0001
 													// Index state : 0b111
 	ASSERT_FALSE(cache.AccessMemory(0b011, true));	// first index tag 0000
@@ -73,7 +73,7 @@ TEST(CacheSimTest, writePolicy)
 	// 1 bit per index
 	// 1 bit offset
 	// FIFO
-	CacheWrapper cache{CacheWrapper::getWrapper(cc)};
+	CacheWrapper cache{cc};
 	ASSERT_FALSE(cache.AccessMemory(0b111, false));	 // first index tag 0001
 	ASSERT_FALSE(cache.AccessMemory(0b111, false));	 // first index tag 0001
 	ASSERT_FALSE(cache.AccessMemory(0b111, false));	 // first index tag 0001

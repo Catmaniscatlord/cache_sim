@@ -17,12 +17,7 @@
 #pragma once
 
 #include <bit>
-#include <boost/unordered_map.hpp>
-#include <boost/unordered_set.hpp>
-#include <cstdint>
-#include <deque>
-#include <iostream>
-#include <list>
+#include <boost/circular_buffer.hpp>
 #include <ostream>
 #include <random>
 #include <type_traits>
@@ -108,23 +103,20 @@ struct cache_block_t
 
 /**
  * @brief one associative container of the cache
- * @description Used to contain all the blocks within a single index. There are
- *as many of these in the cache as the level of associativity
+ * @description has as many elements as the level of associativity.
+ * @ map a set containing pointers to the currently stored blocks
  * @ is_fifo = true
- * @ map is a hashmap maping blocks to a location in the fifo list
  * @ list is a FIFO list of the blocks
  * @ is_fifo = false
- * @ map is a set containing the blocks for constant time look up
- * @ list is an array of the blocks, for constant time access
+ * @ list is an array of the blocks
  **/
 template <bool is_fifo>
 struct CacheIndex
 {
-	// These could be made faster if they pointed to where the cache blocks were
-	// in the block map. Either way its O(1)
-	using ReplaceList = std::conditional_t<is_fifo,
-										   std::list<cache_block_t>,
-										   std::deque<cache_block_t>>;
+	using ReplaceList =
+		std::conditional_t<is_fifo,
+						   boost::circular_buffer<cache_block_t>,
+						   std::vector<cache_block_t>>;
 
 	// This allows us to compare the stored list iterator, with its underlying
 	// cache block
@@ -192,6 +184,7 @@ struct CacheIndex
 
 	CacheIndex(uint_fast8_t associativity, uint_fast8_t tag_size)
 		: associativity_(associativity),
+		  list(associativity),
 		  map(static_cast<size_t>(associativity),
 			  HashBlock{
 				  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)},
@@ -293,23 +286,10 @@ private:
 class CacheWrapper
 {
 public:
-	static CacheWrapper getWrapper(const CacheConf &cc)
-	{
-		if (cc.is_fifo)
-			return {Cache<true>{cc}};
-		else
-			return {Cache<false>{cc}};
-	}
-
-	template <bool is_fifo>
-	requires is_fifo
-	CacheWrapper(const Cache<is_fifo> &cache)
-		: is_fifo_(is_fifo), fifo_cache_(cache){};
-
-	template <bool is_fifo>
-	requires (not is_fifo)
-	CacheWrapper(const Cache<is_fifo> &cache)
-		: is_fifo_(is_fifo), random_cache_(cache){};
+	CacheWrapper(const CacheConf &cc)
+		: is_fifo_(cc.is_fifo),
+		  fifo_cache_(cc.is_fifo ? cc : CacheConf{}),
+		  random_cache_(cc.is_fifo ? CacheConf{} : cc){};
 
 	/**
 	 * @brief returns true on hit, false on miss
@@ -347,15 +327,14 @@ class CacheSimulator
 {
 public:
 	CacheSimulator(CacheConf cache_conf)
-		: cache_wrapper_(CacheWrapper::getWrapper(cache_conf)),
+		: cache_wrapper_(cache_conf),
 		  cache_conf_(cache_conf),
 		  stack_trace_ref_(&stack_trace_)
 	{}
 
 	template <typename Arg>
 	CacheSimulator(CacheConf cache_conf, Arg &&stack_trace)
-		: cache_wrapper_(CacheWrapper::getWrapper(cache_conf)),
-		  cache_conf_(cache_conf)
+		: cache_wrapper_(cache_conf), cache_conf_(cache_conf)
 	{
 		set_stack_trace(std::forward<Arg>(stack_trace));
 	};
