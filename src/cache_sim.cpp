@@ -37,18 +37,22 @@ void CacheSimulator::RunSimulation()
 			rc++;
 		else
 			wc++;
-		rt += 1 + ma.last_memory_access_count;
+		rt += ma.last_memory_access_count;
 
-		at++;
 		// if miss
 		if (!cache_wrapper_.AccessMemory(ma.address, ma.is_read))
 		{
-			rt += cache_conf_.miss_penalty;
-			at += cache_conf_.miss_penalty;
+			rt += cache_conf_.miss_penalty_;
+			at += cache_conf_.miss_penalty_;
 			if (ma.is_read)
 				rm++;
 			else
 				wm++;
+		}
+		else
+		{
+			rt++;
+			at++;
 		}
 	}
 
@@ -70,8 +74,7 @@ requires is_fifo
 {
 	bool hit{true};
 
-	const uint_fast8_t index{static_cast<uint_fast8_t>(
-		(address >> offset_size_) & ((1 << index_size_) - 1))};
+	const auto index{get_index(address)};
 
 	const auto it{cache_[index].map.find(cache_block_t{address, is_read})};
 
@@ -104,8 +107,7 @@ bool Cache<is_fifo>::AccessMemory(const address_t& address, const bool& is_read)
 requires (not is_fifo)
 {
 	bool hit{true};
-	const uint_fast8_t index{static_cast<uint_fast8_t>(
-		(address >> offset_size_) & ((1 << index_size_) - 1))};
+	const auto index{get_index(address)};
 
 	// not in cache
 	if (!cache_[index].map.contains(cache_block_t{address, is_read}))

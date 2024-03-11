@@ -29,3 +29,8 @@ After you have installed the project, in the source directory, run
 By default, this will generate all of the output files into the output folder.
 For help with the options you can run
 `./install/bin/Main --help`
+
+# Testing
+
+The test target is built by default when building the simulator. To run the tests, cd into the build directory and run
+`ctest -VV --output-on-failure`

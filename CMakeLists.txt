@@ -38,7 +38,8 @@ FetchContent_Declare(
 FetchContent_Declare(
   googletest
   URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
-      USES_TERMINAL_DOWNLOAD TRUE)
+      USES_TERMINAL_DOWNLOAD TRUE
+  DOWNLOAD_NO_EXTRACT FALSE)
 
 FetchContent_Declare(
   matplotplusplus

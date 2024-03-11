@@ -34,19 +34,19 @@ std::optional<CacheConf> ReadCacheConfFile(const std::string &s)
 
 	unsigned int tmp;
 	file >> tmp;
-	conf.line_size = static_cast<uint_fast8_t>(tmp);
+	conf.line_size_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
-	conf.associativity = static_cast<uint_fast8_t>(tmp);
+	conf.associativity_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
-	conf.cache_size = tmp;
+	conf.cache_size_ = tmp;
 	// Kb to bytes
-	conf.cache_size *= 1024;
+	conf.cache_size_ *= 1024;
 	file >> tmp;
-	conf.is_fifo = tmp;
+	conf.is_fifo_ = tmp;
 	file >> tmp;
-	conf.miss_penalty = static_cast<uint_fast8_t>(tmp);
+	conf.miss_penalty_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
-	conf.write_allocate = static_cast<uint_fast8_t>(tmp);
+	conf.write_allocate_ = static_cast<uint_fast8_t>(tmp);
 
 	return conf;
 }
@@ -60,19 +60,19 @@ std::optional<CacheConf> ReadCacheConfFile(std::string &&s)
 
 	unsigned int tmp;
 	file >> tmp;
-	conf.line_size = static_cast<uint_fast8_t>(tmp);
+	conf.line_size_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
-	conf.associativity = static_cast<uint_fast8_t>(tmp);
+	conf.associativity_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
-	conf.cache_size = tmp;
+	conf.cache_size_ = tmp;
 	// Kb to bytes
-	conf.cache_size *= 1024;
+	conf.cache_size_ *= 1024;
 	file >> tmp;
-	conf.is_fifo = tmp;
+	conf.is_fifo_ = tmp;
 	file >> tmp;
-	conf.miss_penalty = static_cast<uint_fast8_t>(tmp);
+	conf.miss_penalty_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
-	conf.write_allocate = static_cast<uint_fast8_t>(tmp);
+	conf.write_allocate_ = static_cast<uint_fast8_t>(tmp);
 
 	return conf;
 }

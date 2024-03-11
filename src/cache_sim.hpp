@@ -38,20 +38,36 @@ using address_t = uint32_t;
 
 struct CacheConf
 {
-	uint_fast8_t line_size;
-	uint_fast8_t associativity;
-	uint_fast8_t miss_penalty;
-	address_t cache_size;
+	CacheConf() = default;
+
+	constexpr CacheConf(
+		uint_fast8_t line_size,
+		uint_fast8_t associativity,
+		address_t cache_size,
+		bool is_fifo,
+		uint_fast8_t miss_penalty,
+		bool write_allocate)
+		: line_size_(line_size),
+		  associativity_(associativity),
+		  cache_size_(cache_size),
+		  is_fifo_(is_fifo),
+		  miss_penalty_(miss_penalty),
+		  write_allocate_(write_allocate){};
+
+	uint_fast8_t line_size_;
+	uint_fast8_t associativity_;
+	bool write_allocate_;
 	/**
 	 * false : no-write allocate, write-through
 	 * true : write-allocate, write-back
 	 */
-	bool write_allocate;
+	uint_fast8_t miss_penalty_;
+	address_t cache_size_;
 	/**
 	 * false : random Replacement
 	 * true : FIFO replacement
 	 */
-	bool is_fifo;
+	bool is_fifo_;
 };
 
 struct Results
@@ -113,6 +129,9 @@ struct cache_block_t
 template <bool is_fifo>
 struct CacheIndex
 {
+	uint_fast8_t associativity_;
+	const uint_fast8_t tag_shift_;
+
 	using ReplaceList =
 		std::conditional_t<is_fifo,
 						   boost::circular_buffer<cache_block_t>,
@@ -145,8 +164,8 @@ struct CacheIndex
 		bool operator()(const typename ReplaceList::iterator &lhs,
 						const cache_block_t &rhs) const noexcept
 		{
-			return (rhs.block_address_ >> tag_shift) ==
-				   (lhs->block_address_ >> tag_shift);
+			return (lhs->block_address_ >> tag_shift) ==
+				   (rhs.block_address_ >> tag_shift);
 		}
 	};
 
@@ -180,16 +199,14 @@ struct CacheIndex
 
 	BlockMap map;
 
-	uint_fast8_t associativity_;
-
 	CacheIndex(uint_fast8_t associativity, uint_fast8_t tag_size)
 		: associativity_(associativity),
 		  list(associativity),
+		  tag_shift_(
+			  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)),
 		  map(static_cast<size_t>(associativity),
-			  HashBlock{
-				  static_cast<uint_fast8_t>(8 * sizeof(address_t) - tag_size)},
-			  CompareBlock{static_cast<uint_fast8_t>(
-				  8 * sizeof(address_t) - tag_size)}){};
+			  HashBlock{tag_shift_},
+			  CompareBlock{tag_shift_}){};
 
 	// clear the maps and lists, effectively flushes the cache
 	void clear()
@@ -220,17 +237,18 @@ public:
 		  tag_size_(){};
 
 	Cache(CacheConf cc)
-		: cache_size_(cc.cache_size),
-		  associativity_(cc.associativity),
-		  line_size_(cc.line_size),
-		  is_write_allocate_(cc.write_allocate),
+		: cache_size_(cc.cache_size_),
+		  associativity_(cc.associativity_),
+		  line_size_(cc.line_size_),
+		  is_write_allocate_(cc.write_allocate_),
 		  // if the associativity is 0, then the cache is fully associative,
 		  // there is only 1 index
-		  num_indicies_(cc.associativity
-							? cc.cache_size / (cc.associativity * cc.line_size)
-							: 1),
+		  num_indicies_(
+			  cc.associativity_
+				  ? cc.cache_size_ / (cc.associativity_ * cc.line_size_)
+				  : 1),
 		  offset_size_(
-			  static_cast<uint_fast8_t>(std::bit_width(cc.line_size) - 1)),
+			  static_cast<uint_fast8_t>(std::bit_width(cc.line_size_) - 1)),
 		  index_size_(
 			  static_cast<uint_fast8_t>(std::bit_width(num_indicies_) - 1)),
 		  tag_size_(static_cast<uint_fast8_t>(
@@ -258,10 +276,6 @@ public:
 			ci.clear();
 	}
 
-private:
-	// used for random removal in a random replacement_policy cache
-	static std::mt19937 kGen;
-
 	const address_t cache_size_;
 	const uint_fast8_t associativity_;
 	const uint_fast8_t line_size_;
@@ -275,6 +289,13 @@ private:
 	 */
 	const bool is_write_allocate_;
 
+	inline auto get_index(address_t address) const
+	{
+		return (address >> offset_size_) & ((1 << index_size_) - 1);
+	};
+
+private:
+	static std::mt19937 kGen;
 	std::vector<CacheIndex<is_fifo>> cache_;
 };
 
@@ -287,9 +308,9 @@ class CacheWrapper
 {
 public:
 	CacheWrapper(const CacheConf &cc)
-		: is_fifo_(cc.is_fifo),
-		  fifo_cache_(cc.is_fifo ? cc : CacheConf{}),
-		  random_cache_(cc.is_fifo ? CacheConf{} : cc){};
+		: is_fifo_(cc.is_fifo_),
+		  fifo_cache_(cc.is_fifo_ ? cc : CacheConf{}),
+		  random_cache_(cc.is_fifo_ ? CacheConf{} : cc){};
 
 	/**
 	 * @brief returns true on hit, false on miss

@@ -27,9 +27,9 @@ In this lab we create a basic cache simulator to simulate several different char
 \section{Method}
 To perform this lab we must create a C/C++ program to simulate a cache. We also must verify that our output is correct.
 
-I have created a sample trace file of around 100 lines that I have used for testing.
+To test my cache simulator I wrote a variety of test cases using gtest, googles testing framework for C++. You can see the tests I wrote in \verb|src/cache_sim_test.cpp|. These tests include testing to see if I am identifying the tag bits correctly, the index bits, and the  offset bits. Along with testing writing values to a small test cache and verifying that a certain order of requests to the cache result in hits and misses.
 
-As for the cache simulator, I have provided a \verb|README.md| file documenting how to build and run my cache simulator.
+I have provided a \verb|README.md| file documenting how to build, test, and run my cache simulator.
 
 \section{Results and Discussion}
 \subsection{Results}
