@@ -22,14 +22,13 @@
 void CacheSimulator::RunSimulation()
 {
 	// memory access count
-	const auto tc{stack_trace_ref_->size()};
+	const auto ac{stack_trace_ref_->size()};
 
 	uint64_t rc{};	// read count
 	uint64_t wc{};	// write count
+	uint64_t ic{};	// instruction count
 	uint64_t rm{};	// read misses
 	uint64_t wm{};	// write misses
-	uint64_t rt{};	// run time
-	uint64_t at{};	// access time
 
 	for (const auto& ma : *stack_trace_ref_)
 	{
@@ -37,34 +36,27 @@ void CacheSimulator::RunSimulation()
 			rc++;
 		else
 			wc++;
-		rt += ma.last_memory_access_count;
+		ic += ma.last_memory_access_count + 1;
 
 		// if miss
 		if (!cache_wrapper_.AccessMemory(ma.address, ma.is_read))
 		{
-			rt += cache_conf_.miss_penalty_;
-			at += cache_conf_.miss_penalty_;
 			if (ma.is_read)
 				rm++;
 			else
 				wm++;
 		}
-		else
-		{
-			rt++;
-			at++;
-		}
 	}
 
 	results_.total_hit_rate =
-		1.0f - static_cast<double>(rm + wm) / static_cast<double>(tc);
+		1.0f - static_cast<double>(rm + wm) / static_cast<double>(ac);
 	results_.read_hit_rate =
 		1.0f - static_cast<double>(rm) / static_cast<double>(rc);
 	results_.write_hit_rate =
 		1.0f - static_cast<double>(wm) / static_cast<double>(wc);
-	results_.run_time = rt;
+	results_.run_time = ic + (rm + wm) * cache_conf_.miss_penalty_;
 	results_.average_memory_access_time =
-		static_cast<double>(at) / static_cast<double>(tc);
+		1 + (1.f - results_.total_hit_rate) * cache_conf_.miss_penalty_;
 }
 
 // Least Recently Used
