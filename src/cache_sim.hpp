@@ -110,11 +110,6 @@ struct cache_block_t
 	// the dirty bit and its functionality is useless unless he gives some clock
 	// times for write-through and write-back
 	bool dirty_;
-
-	cache_block_t() = default;
-
-	cache_block_t(address_t address, bool dirty)
-		: block_address_(address), dirty_(dirty){};
 };
 
 /**
@@ -276,6 +271,11 @@ public:
 			ci.clear();
 	}
 
+	inline auto get_index(address_t address) const
+	{
+		return (address >> offset_size_) & ((1 << index_size_) - 1);
+	};
+
 	const address_t cache_size_;
 	const uint_fast8_t associativity_;
 	const uint_fast8_t line_size_;
@@ -288,11 +288,6 @@ public:
 	 * true : write-allocate, write-back
 	 */
 	const bool is_write_allocate_;
-
-	inline auto get_index(address_t address) const
-	{
-		return (address >> offset_size_) & ((1 << index_size_) - 1);
-	};
 
 private:
 	static std::mt19937 kGen;
@@ -409,7 +404,7 @@ public:
 private:
 	CacheWrapper cache_wrapper_;
 	CacheConf cache_conf_;
-	// change this to a shared pointer for improved efficiency
+	// internal storage for the stack trace if needed
 	StackTrace stack_trace_;
 	StackTrace *stack_trace_ref_;
 	Results results_;
