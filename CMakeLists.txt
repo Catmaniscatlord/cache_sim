@@ -20,7 +20,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(CacheSim)
-add_subdirectory(src)
 
 # ##############################################################################
 # FETCH PACKAGES #
@@ -59,3 +58,4 @@ FetchContent_MakeAvailable(Boost googletest matplotplusplus)
 # Enforce a strict compiler over the whole project
 add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic)
 enable_testing()
+add_subdirectory(src)

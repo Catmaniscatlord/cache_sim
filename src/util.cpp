@@ -22,6 +22,8 @@
 #include <iostream>
 #include <string>
 
+#include "base_structs.hpp"
+
 namespace Util
 {
 
@@ -42,7 +44,17 @@ std::optional<CacheConf> ReadCacheConfFile(const std::string &s)
 	// Kb to bytes
 	conf.cache_size_ *= 1024;
 	file >> tmp;
-	conf.is_fifo_ = tmp;
+	switch (tmp)
+	{
+		case 0:
+			conf.replacement_policy_ = ReplacementPolicy::RAND;
+			break;
+		case 1:
+			conf.replacement_policy_ = ReplacementPolicy::FIFO;
+			break;
+		default:
+			__builtin_unreachable();
+	}
 	file >> tmp;
 	conf.miss_penalty_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;
@@ -68,7 +80,17 @@ std::optional<CacheConf> ReadCacheConfFile(std::string &&s)
 	// Kb to bytes
 	conf.cache_size_ *= 1024;
 	file >> tmp;
-	conf.is_fifo_ = tmp;
+	switch (tmp)
+	{
+		case 0:
+			conf.replacement_policy_ = ReplacementPolicy::RAND;
+			break;
+		case 1:
+			conf.replacement_policy_ = ReplacementPolicy::FIFO;
+			break;
+		default:
+			__builtin_unreachable();
+	}
 	file >> tmp;
 	conf.miss_penalty_ = static_cast<uint_fast8_t>(tmp);
 	file >> tmp;

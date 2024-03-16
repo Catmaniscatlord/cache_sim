@@ -14,7 +14,9 @@ cmake_minimum_required(VERSION 3.21)
 # ##############################################################################
 # LIBRARY CREATION #
 # ##############################################################################
-add_library(libCacheSim STATIC cache_sim.cpp cache_sim.hpp)
+add_library(libCacheSim STATIC cache_sim.cpp rand_cache.cpp fifo_cache.cpp
+                               cache_factory.cpp)
+target_include_directories(libCacheSim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(libCacheSim Boost::unordered)
 
 # ##############################################################################

@@ -152,8 +152,8 @@ int main(int argc, char **argv)
 				for (auto &st : st_arr)
 				{
 					cs.first.set_stack_trace(&st.first);
-					cs.first.RunSimulation();
 					cs.first.ClearCache();
+					cs.first.RunSimulation();
 					results_map[st.second][cs.second] = cs.first.results();
 				}
 			}));
@@ -244,7 +244,7 @@ void CreateOutputImages(
 				label_y.emplace_back(y[i] + (max * .05));
 				std::stringstream ss;
 				ss << std::setprecision(3) << y[i];
-				labels.emplace_back(std::move(ss.str()));
+				labels.emplace_back(ss.str());
 			}
 			hold(on);
 			text(label_x, label_y, labels)->font("Times New Roman");
