@@ -94,6 +94,8 @@ struct CacheBase
 		  is_write_allocate_(cc.write_allocate_),
 		  replacement_policy_(cc.replacement_policy_){};
 
+	virtual ~CacheBase() = default;
+
 	/**
 	 * @brief returns true on hit, false on miss
 	 * @description Two different instantiations for when
@@ -130,6 +132,8 @@ public:
 		  comparer(tag_shift_),
 		  hasher(tag_shift_),
 		  cache_(num_indicies_, {associativity_, comparer, hasher}){};
+
+	virtual ~Cache() = default;
 
 	/**
 	 * @brief returns true on hit, false on miss
