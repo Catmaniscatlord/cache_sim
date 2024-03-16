@@ -23,13 +23,13 @@
 template <CacheBlockContainer T>
 struct CacheIndex
 {
-	const uint_fast8_t associativity_;
-
-	T list;
-
 	using SearchMap = std::unordered_set<typename T::iterator,
 										 CacheBlockHash<T>,
 										 CacheBlockCompare<T>>;
+
+	const uint_fast8_t associativity_;
+
+	T list;
 
 	SearchMap map;
 
@@ -59,6 +59,21 @@ struct CacheIndex
  **/
 struct CacheBase
 {
+	const address_t cache_size_;
+	const uint_fast8_t associativity_;
+	const uint_fast8_t line_size_;
+	const address_t num_indicies_;
+	const uint_fast8_t offset_size_;
+	const uint_fast8_t index_size_;
+	const uint_fast8_t tag_size_;
+	const uint_fast8_t tag_shift_;
+	/**
+	 * false : no-write allocate, write-through
+	 * true : write-allocate, write-back
+	 */
+	const bool is_write_allocate_;
+	const ReplacementPolicy replacement_policy_;
+
 	CacheBase(CacheConf cc)
 		: cache_size_(cc.cache_size_),
 		  associativity_(cc.associativity_),
@@ -93,21 +108,6 @@ struct CacheBase
 	{
 		return (address >> offset_size_) & ((1 << index_size_) - 1);
 	};
-
-	const address_t cache_size_;
-	const uint_fast8_t associativity_;
-	const uint_fast8_t line_size_;
-	const address_t num_indicies_;
-	const uint_fast8_t offset_size_;
-	const uint_fast8_t index_size_;
-	const uint_fast8_t tag_size_;
-	const uint_fast8_t tag_shift_;
-	/**
-	 * false : no-write allocate, write-through
-	 * true : write-allocate, write-back
-	 */
-	const bool is_write_allocate_;
-	const ReplacementPolicy replacement_policy_;
 };
 
 /**
@@ -117,6 +117,13 @@ struct CacheBase
 template <CacheBlockContainer T>
 class Cache : public CacheBase
 {
+private:
+	const CacheBlockCompare<T> comparer;
+	const CacheBlockHash<T> hasher;
+
+protected:
+	std::vector<CacheIndex<T>> cache_;
+
 public:
 	Cache(CacheConf cc)
 		: CacheBase(cc),
@@ -138,11 +145,4 @@ public:
 		for (auto &ci : cache_)
 			ci.clear();
 	};
-
-private:
-	const CacheBlockCompare<T> comparer;
-	const CacheBlockHash<T> hasher;
-
-protected:
-	std::vector<CacheIndex<T>> cache_;
 };

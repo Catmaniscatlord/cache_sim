@@ -21,6 +21,14 @@
  **/
 class CacheSimulator
 {
+private:
+	std::unique_ptr<CacheBase> cache_;
+	CacheConf cache_conf_;
+	// internal storage for the stack trace if needed
+	StackTrace stack_trace_;
+	StackTrace *stack_trace_ref_;
+	Results results_;
+
 public:
 	CacheSimulator(CacheConf cache_conf)
 		: cache_(CacheFactory::CreateCache(cache_conf)),
@@ -80,12 +88,4 @@ public:
 	{
 		return results_;
 	};
-
-private:
-	std::unique_ptr<CacheBase> cache_;
-	CacheConf cache_conf_;
-	// internal storage for the stack trace if needed
-	StackTrace stack_trace_;
-	StackTrace *stack_trace_ref_;
-	Results results_;
 };

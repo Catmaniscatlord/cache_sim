@@ -56,6 +56,21 @@ enum ReplacementPolicy
 
 struct CacheConf
 {
+	uint_fast8_t line_size_;
+	uint_fast8_t associativity_;
+	bool write_allocate_;
+	/**
+	 * false : no-write allocate, write-through
+	 * true : write-allocate, write-back
+	 */
+	uint_fast8_t miss_penalty_;
+	address_t cache_size_;
+	/**
+	 * false : random Replacement
+	 * true : FIFO replacement
+	 */
+	ReplacementPolicy replacement_policy_;
+
 	CacheConf() = default;
 
 	constexpr CacheConf(
@@ -71,21 +86,6 @@ struct CacheConf
 		  miss_penalty_(miss_penalty),
 		  cache_size_(cache_size),
 		  replacement_policy_(replacement_policy){};
-
-	uint_fast8_t line_size_;
-	uint_fast8_t associativity_;
-	bool write_allocate_;
-	/**
-	 * false : no-write allocate, write-through
-	 * true : write-allocate, write-back
-	 */
-	uint_fast8_t miss_penalty_;
-	address_t cache_size_;
-	/**
-	 * false : random Replacement
-	 * true : FIFO replacement
-	 */
-	ReplacementPolicy replacement_policy_;
 };
 
 struct Results

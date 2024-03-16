@@ -32,13 +32,13 @@ concept CacheBlockContainer = requires(T t, size_t x) {
 template <CacheBlockContainer T>
 struct CacheBlockCompare
 {
-	CacheBlockCompare(uint_fast8_t tag_shift_) : tag_shift(tag_shift_){};
-
 	// this allows for unordered set to use any of these functions for
 	// comparison
 	using is_transparent = void;
 
 	const uint_fast8_t tag_shift;
+
+	CacheBlockCompare(uint_fast8_t tag_shift_) : tag_shift(tag_shift_){};
 
 	bool operator()(const typename T::iterator &lhs,
 					const typename T::iterator &rhs) const noexcept
@@ -65,13 +65,13 @@ struct CacheBlockCompare
 template <CacheBlockContainer T>
 struct CacheBlockHash
 {
-	CacheBlockHash(uint_fast8_t tag_shift_) : tag_shift(tag_shift_){};
-
 	// this allows for unordered set to use any of these functions for
 	// comparison
 	using is_transparent = void;
 
 	const uint_fast8_t tag_shift;
+
+	CacheBlockHash(uint_fast8_t tag_shift_) : tag_shift(tag_shift_){};
 
 	std::size_t operator()(const cache_block_t &cb) const noexcept
 	{
