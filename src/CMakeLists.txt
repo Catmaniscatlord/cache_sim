@@ -4,12 +4,8 @@
 # description: Build file
 #
 # authors: Chamberlain, David
-#
-# class: CSE 3031 instructor: Zheng assignment: Lab #2
-#
-# assigned: 2/22/2024 due: 3/7/2024
 
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.28)
 
 # ##############################################################################
 # LIBRARY CREATION #

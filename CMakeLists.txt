@@ -5,12 +5,8 @@
 #
 # authors: Chamberlain, David
 #
-# class: CSE 3031 instructor: Zheng assignment: Lab #2
-#
-# assigned: 2/22/2024 due: 3/7/2024
-#
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -51,11 +47,10 @@ FetchContent_MakeAvailable(Boost googletest matplotplusplus)
 # ##############################################################################
 # Project Wide Options #
 # ##############################################################################
-
 # This is AFTER the fetch contents otherwise we will compile the packages we
 # include with our strick compiler settings.
 
 # Enforce a strict compiler over the whole project
-add_compile_options(-Werror -Wall -Wextra -Wconversion -Wpedantic)
+add_compile_options(-O3 -Werror -Wall -Wextra -Wconversion -Wpedantic)
 enable_testing()
 add_subdirectory(src)
