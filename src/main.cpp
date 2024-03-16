@@ -31,10 +31,6 @@
 #include <thread>
 
 #include "cache_sim.hpp"
-#include "matplot/core/figure_registry.h"
-#include "matplot/freestanding/axes_functions.h"
-#include "matplot/freestanding/plot.h"
-#include "matplot/util/common.h"
 #include "util.hpp"
 
 namespace po = boost::program_options;
@@ -138,7 +134,7 @@ int main(int argc, char **argv)
 	 *********************************/
 	// Create the cache sims
 	for (auto &cc : cc_arr)
-		cs_arr.emplace_back(CacheSimulator(cc.first), cc.second);
+		cs_arr.emplace_back(cc.first, cc.second);
 
 	// multithreading go brrt
 	std::vector<std::jthread> sim_threads;

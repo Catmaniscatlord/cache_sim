@@ -34,8 +34,8 @@ struct CacheIndex
 	SearchMap map;
 
 	CacheIndex(uint_fast8_t associativity,
-			   CacheBlockCompare<T> compare,
-			   CacheBlockHash<T> hash)
+			   const CacheBlockCompare<T> &compare,
+			   const CacheBlockHash<T> &hash)
 		: associativity_(associativity),
 		  list(associativity),
 		  map(static_cast<size_t>(associativity), hash, compare)
@@ -119,12 +119,10 @@ class Cache : public CacheBase
 {
 public:
 	Cache(CacheConf cc)
-		: CacheBase(cc), comparer(tag_shift_), hasher(tag_shift_)
-	{
-		cache_.reserve(num_indicies_);
-		for (address_t i = 0; i < num_indicies_; i++)
-			cache_.emplace_back(associativity_, comparer, hasher);
-	};
+		: CacheBase(cc),
+		  comparer(tag_shift_),
+		  hasher(tag_shift_),
+		  cache_(num_indicies_, {associativity_, comparer, hasher}){};
 
 	/**
 	 * @brief returns true on hit, false on miss
@@ -141,10 +139,10 @@ public:
 			ci.clear();
 	};
 
-protected:
-	std::vector<CacheIndex<T>> cache_;
-
 private:
 	const CacheBlockCompare<T> comparer;
 	const CacheBlockHash<T> hasher;
+
+protected:
+	std::vector<CacheIndex<T>> cache_;
 };
