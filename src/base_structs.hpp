@@ -80,12 +80,12 @@ struct CacheConf
 		ReplacementPolicy replacement_policy,
 		uint_fast8_t miss_penalty,
 		bool write_allocate)
-		: line_size_(line_size),
-		  associativity_(associativity),
-		  write_allocate_(write_allocate),
-		  miss_penalty_(miss_penalty),
-		  cache_size_(cache_size),
-		  replacement_policy_(replacement_policy){};
+		: line_size_{line_size},
+		  associativity_{associativity},
+		  write_allocate_{write_allocate},
+		  miss_penalty_{miss_penalty},
+		  cache_size_{cache_size},
+		  replacement_policy_{replacement_policy} {};
 };
 
 struct Results

@@ -11,10 +11,10 @@
 
 #include <cstdint>
 
-void CacheSimulator::RunSimulation()
+Results CacheSimulator::SimulateTrace(const StackTrace& st)
 {
 	// memory access count
-	const auto ac{stack_trace_ref_->size()};
+	const auto ac{st.size()};
 
 	uint64_t rc{};	// read count
 	uint64_t wc{};	// write count
@@ -22,7 +22,7 @@ void CacheSimulator::RunSimulation()
 	uint64_t rm{};	// read misses
 	uint64_t wm{};	// write misses
 
-	for (const auto& ma : *stack_trace_ref_)
+	for (auto& ma : st)
 	{
 		if (ma.is_read)
 			rc++;
@@ -40,13 +40,14 @@ void CacheSimulator::RunSimulation()
 		}
 	}
 
-	results_.total_hit_rate =
-		1.0f - static_cast<double>(rm + wm) / static_cast<double>(ac);
-	results_.read_hit_rate =
-		1.0f - static_cast<double>(rm) / static_cast<double>(rc);
-	results_.write_hit_rate =
-		1.0f - static_cast<double>(wm) / static_cast<double>(wc);
-	results_.run_time = ic + (rm + wm) * cache_conf_.miss_penalty_;
-	results_.average_memory_access_time =
-		1 + (1.f - results_.total_hit_rate) * cache_conf_.miss_penalty_;
+	return {.total_hit_rate =
+				1.0f - static_cast<double>(rm + wm) / static_cast<double>(ac),
+			.read_hit_rate =
+				1.0f - static_cast<double>(rm) / static_cast<double>(rc),
+			.write_hit_rate =
+				1.0f - static_cast<double>(wm) / static_cast<double>(wc),
+			.run_time = ic + (rm + wm) * cache_conf_.miss_penalty_,
+			.average_memory_access_time =
+				1 + (static_cast<double>(rm + wm) / static_cast<double>(ac)) *
+						cache_conf_.miss_penalty_};
 }

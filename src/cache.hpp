@@ -75,24 +75,24 @@ struct CacheBase
 	const ReplacementPolicy replacement_policy_;
 
 	CacheBase(CacheConf cc)
-		: cache_size_(cc.cache_size_),
-		  associativity_(cc.associativity_),
-		  line_size_(cc.line_size_),
+		: cache_size_{cc.cache_size_},
+		  associativity_{cc.associativity_},
+		  line_size_{cc.line_size_},
 		  // if the associativity is 0, then the cache is fully associative,
 		  // there is only 1 index
-		  num_indicies_(
+		  num_indicies_{
 			  cc.associativity_
 				  ? cc.cache_size_ / (cc.associativity_ * cc.line_size_)
-				  : 1),
-		  offset_size_(
-			  static_cast<uint_fast8_t>(std::bit_width(cc.line_size_) - 1)),
-		  index_size_(
-			  static_cast<uint_fast8_t>(std::bit_width(num_indicies_) - 1)),
-		  tag_size_(static_cast<uint_fast8_t>(
-			  8 * sizeof(address_t) - offset_size_ - index_size_)),
-		  tag_shift_(offset_size_ + index_size_),
-		  is_write_allocate_(cc.write_allocate_),
-		  replacement_policy_(cc.replacement_policy_){};
+				  : 1},
+		  offset_size_{
+			  static_cast<uint_fast8_t>(std::bit_width(cc.line_size_) - 1)},
+		  index_size_{
+			  static_cast<uint_fast8_t>(std::bit_width(num_indicies_) - 1)},
+		  tag_size_{static_cast<uint_fast8_t>(
+			  8 * sizeof(address_t) - offset_size_ - index_size_)},
+		  tag_shift_{static_cast<uint_fast8_t>(offset_size_ + index_size_)},
+		  is_write_allocate_{cc.write_allocate_},
+		  replacement_policy_{cc.replacement_policy_} {};
 
 	virtual ~CacheBase() = default;
 
@@ -128,10 +128,10 @@ protected:
 
 public:
 	Cache(CacheConf cc)
-		: CacheBase(cc),
-		  comparer(tag_shift_),
-		  hasher(tag_shift_),
-		  cache_(num_indicies_, {associativity_, comparer, hasher}){};
+		: CacheBase{cc},
+		  comparer{tag_shift_},
+		  hasher{tag_shift_},
+		  cache_{num_indicies_, {associativity_, comparer, hasher}} {};
 
 	virtual ~Cache() = default;
 

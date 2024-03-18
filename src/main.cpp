@@ -7,6 +7,8 @@
  *
  **/
 
+#define TIMER
+
 #include <matplot/matplot.h>
 
 #include <algorithm>
@@ -53,6 +55,10 @@ int main(int argc, char **argv)
 	 * Command line options *
 	 ************************/
 
+#ifdef TIMER
+	Util::Timer t5{"parse input"};
+	t5.start();
+#endif
 	// clang-format off
 	po::options_description desc{"Options"};
 	desc.add_options()("help,h", "Help prompt")
@@ -66,6 +72,10 @@ int main(int argc, char **argv)
 
 	po::notify(vm);
 
+#ifdef TIMER
+	Util::Timer t{"Trace read"};
+	t.start();
+#endif
 	std::vector<std::pair<std::future<std::optional<StackTrace>>, std::string>>
 		st_read_files;
 	if (vm.count("stack-trace"))
@@ -78,21 +88,6 @@ int main(int argc, char **argv)
 				std::async(std::launch::async,
 						   [=]() { return Util::ReadStackTraceFile(st_file); }),
 				st_file);
-		}
-	}
-
-	// joins the futures
-	for (auto &st : st_read_files)
-	{
-		auto read_st{st.first.get()};
-		if (read_st.has_value())
-			st_arr.emplace_back(std::move(read_st.value()),
-								std::filesystem::path(st.second).filename());
-		else
-		{
-			std::cerr << "Stack Trace file " << st.second << " not found"
-					  << std::endl;
-			return 1;
 		}
 	}
 
@@ -122,13 +117,50 @@ int main(int argc, char **argv)
 	if (!std::filesystem::exists(output_folder))
 		std::filesystem::create_directory(output_folder);
 
+	// joins the futures
+	for (auto &st : st_read_files)
+	{
+		auto read_st{st.first.get()};
+		if (read_st.has_value())
+			st_arr.emplace_back(std::move(read_st.value()),
+								std::filesystem::path(st.second).filename());
+		else
+		{
+			std::cerr << "Stack Trace file " << st.second << " not found"
+					  << std::endl;
+			return 1;
+		}
+	}
+#ifdef TIMER
+	t.stop();
+	t.print();
+#endif
+
+#ifdef TIMER
+	t5.stop();
+	t5.print();
+#endif
+
 	/*********************************
 	 * Running The Cache Simulations *
 	 *********************************/
+#ifdef TIMER
+	Util::Timer t4{"create confs"};
+	t4.start();
+#endif
 	// Create the cache sims
 	for (auto &cc : cc_arr)
 		cs_arr.emplace_back(cc.first, cc.second);
 
+#ifdef TIMER
+	t4.stop();
+	t4.print();
+#endif
+
+#ifdef TIMER
+	Util::Timer t3{"run sims "};
+	t3.start();
+#endif
 	// multithreading go brrt
 	std::vector<std::jthread> sim_threads;
 	for (auto &cs : cs_arr)
@@ -140,10 +172,9 @@ int main(int argc, char **argv)
 			{
 				for (auto &st : st_arr)
 				{
-					cs.first.set_stack_trace(&st.first);
 					cs.first.ClearCache();
-					cs.first.RunSimulation();
-					results_map[st.second][cs.second] = cs.first.results();
+					results_map[st.second][cs.second] =
+						cs.first.SimulateTrace(st.first);
 				}
 			}));
 	}
@@ -151,12 +182,24 @@ int main(int argc, char **argv)
 	// join up our simulation threads
 	for (auto &i : sim_threads)
 		i.join();
+#ifdef TIMER
+	t3.stop();
+	t3.print();
+#endif
 
 	/******************
 	 * Output Results *
 	 ******************/
+#ifdef TIMER
+	Util::Timer t1{"Write output"};
+	t.start();
+#endif
 	CreateOutputFiles(results_map, output_folder);
 	CreateOutputImages(results_map, output_folder);
+#ifdef TIMER
+	t1.stop();
+	t1.print();
+#endif
 }
 
 void CreateOutputFiles(
